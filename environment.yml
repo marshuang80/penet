@@ -1,0 +1,34 @@
+name: hsct
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+  - simpleitk
+  - pytorch
+dependencies:
+  - ffmpeg=3.4
+  - h5py=2.8.0
+  - imageio=2.3.0
+  - ipython=6.4.0
+  - jupyter=1.0.0
+  - matplotlib=2.2.2
+  - moviepy=0.2.3.4
+  - nibabel=2.2.1
+  - numpy=1.14.2
+  - opencv=3.3.1
+  - pandas=0.23.0
+  - pillow=5.1.0
+  - pip=10.0.1
+  - python=3.6.5
+  - pytorch=0.4.0
+  - pydicom=1.0.2
+  - requests=2.19.1
+  - scikit-image=0.13.1
+  - scikit-learn=0.19.1
+  - scipy=1.1.0
+  - simpleitk=1.1.0
+  - tensorboard=1.8.0
+  - tensorboardx=1.2
+  - tensorflow=1.8.0
+  - tqdm=4.23.0
+  - torchvision=0.2.1
