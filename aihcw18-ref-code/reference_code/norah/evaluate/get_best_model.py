@@ -1,0 +1,58 @@
+"""
+get_best_model.py
+    input an experiment path /deep/group/{modality_task}/models/{experiment_type}/
+    input number of models n
+    output the n best models based on validation loss (found in the path, search over epochs)
+"""
+import glob, sys, argparse, json
+
+def print_helper(seq, verbose, n_print):
+    print(f"Best {n_print} model(s):")
+    for i, model_info in enumerate(sorted(seq, reverse=True)):
+        if verbose:
+            print(model_info)
+        else:
+            print(model_info[1])
+        if i == n_print:
+            break
+    
+def get_best_models(path, n, datadir=None, verbose=False):
+    # from https://stackoverflow.com/questions/3368969/find-string-between-two-substrings
+    def find_between(s, first, last):
+        try:
+            start = s.index(first ) + len( first )
+            end = s.index( last, start )
+            return s[start:end]
+        except ValueError:
+            return ""
+
+    models = []
+    #print("Models: ", glob.glob(path + "/*epoch*"))
+    for checkpoint_path in glob.glob(path + "/*epoch*"):
+        if datadir is not None:
+            #parent_dir = "/".join(checkpoint_path.split("/")[:-1])
+            args = json.load(open(path + '/args.json', 'r'))
+            #print("Check point: ", checkpoint_path, " Args: ", args)
+            # Only search for models which use a certain dataset.
+            if datadir[-1] != '/':
+                datadir += '/'
+            if args['datadir'] != datadir:
+                continue
+        val_loss = float(find_between(
+            checkpoint_path, 'val', '_train'))
+        #print("VAL LOSS: ", val_loss)
+        models.append((val_loss, checkpoint_path))
+    
+    return sorted(models)[:n]
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--path', 
+        help="Path to experiment")
+    parser.add_argument('-n', '--n', type=int, default=20)
+    parser.add_argument('--verbose', action="store_true")
+    args = parser.parse_args()
+    models = get_best_models(args.path, args.n, args.verbose)
+
+    print_helper(models, args.verbose, args.n)
