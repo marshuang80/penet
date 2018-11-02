@@ -2,6 +2,7 @@ import numpy as np
 import random
 import sklearn.metrics as sk_metrics
 import torch
+import torch.nn.functional as F
 import util
 
 from tqdm import tqdm
@@ -24,7 +25,7 @@ class ModelEvaluator(object):
             max_eval: Maximum number of examples to evaluate at each evaluation.
             epochs_per_eval: Number of epochs between each evaluation.
         """
-        self.aggregator = None if not agg_method else OutputAggregator(agg_method, num_epochs=5)
+        self.aggregator = None if not agg_method else OutputAggregator(agg_method, num_bins=10, num_epochs=5)
         self.data_loaders = data_loaders
         self.dataset_name = dataset_name
         self.do_classify = do_classify
@@ -91,21 +92,14 @@ class ModelEvaluator(object):
                     break
 
                 with torch.no_grad():
-                    seg_targets = targets_dict['mask']
-                    cls_logits, seg_logits = model.forward(inputs.to(device))
-                    seg_loss = self.seg_loss_fn(seg_logits, seg_targets.to(device))
-                    loss = seg_loss
+                    cls_logits = model.forward(inputs.to(device))
+                    cls_targets = targets_dict['is_abnormal']
+                    loss = self.cls_loss_fn(cls_logits, cls_targets.to(device))
 
-                    if self.do_classify:
-                        cls_targets = targets_dict['is_abnormal']
-                        cls_loss = self.cls_loss_fn(cls_logits, cls_targets.to(device))
-                        loss += cls_loss
-
-                keys = [(se, sl) for se, sl in zip(targets_dict['series_idx'], targets_dict['slice_idx'])]
-                self._record_batch(cls_logits, keys, loss, **records)
+                self._record_batch(cls_logits, targets_dict['series_idx'], loss, **records)
 
                 if start_visual <= num_evaluated and num_visualized < self.num_visuals and phase != 'train':
-                    num_visualized += self.logger.visualize(inputs, cls_logits, seg_logits, targets_dict, phase=phase)
+                    num_visualized += self.logger.visualize(inputs, cls_logits, targets_dict, phase=phase)
 
                 progress_bar.update(min(batch_size, num_examples - num_evaluated))
                 num_evaluated += batch_size
@@ -116,12 +110,12 @@ class ModelEvaluator(object):
         return metrics, curves
 
     @staticmethod
-    def _record_batch(logits, new_keys, loss, probs=None, keys=None, loss_meter=None):
+    def _record_batch(logits, targets, loss, probs=None, keys=None, loss_meter=None):
         """Record results from a batch to keep track of metrics during evaluation.
 
         Args:
             logits: Batch of logits output by the model.
-            new_keys: Batch of series_idx, slice_idx keys corresponding to the logits.
+            targets: Batch of ground-truth targets corresponding to the logits.
             probs: List of probs from all evaluations.
             keys: List of keys to map window-level logits back to their series-level predictions.
             loss_meter: AverageMeter keeping track of average loss during evaluation.
@@ -129,11 +123,11 @@ class ModelEvaluator(object):
         if probs is not None:
             assert keys is not None, 'Must keep probs and keys lists in parallel'
             with torch.no_grad():
-                batch_probs = torch.sigmoid(logits)
+                batch_probs = F.sigmoid(logits)
             probs.append(batch_probs)
 
             # Note: `targets` is assumed to hold the keys for these examples
-            keys += new_keys
+            keys.append(targets)
 
         if loss_meter is not None:
             loss_meter.update(loss.item(), logits.size(0))
@@ -161,11 +155,7 @@ class ModelEvaluator(object):
 
             # Convert to flat numpy array
             probs = np.concatenate(probs).ravel().tolist()
-
-            # Sort and flatten keys
-            keys_probs = list(sorted(zip(keys, probs), key=lambda x: x[0]))
-            keys = [k[0].item() for k, _ in keys_probs]
-            probs = [p for _, p in keys_probs]
+            keys = np.concatenate(keys).ravel().tolist()
 
             # Aggregate predictions across each series
             idx2prob = self.aggregator.aggregate(keys, probs, data_loader, phase, device)
@@ -180,6 +170,7 @@ class ModelEvaluator(object):
                 phase + '_' + 'loss': sk_metrics.log_loss(labels, probs, labels=[0, 1])
             })
 
+            # Update summary dicts
             try:
                 metrics.update({
                     phase + '_' + 'AUPRC': sk_metrics.average_precision_score(labels, probs),

@@ -6,7 +6,7 @@ import random
 import torch
 import util
 
-from datasets.ct_head_dataset import CTHeadDataset
+from .ct_head_dataset import CTHeadDataset
 from ct.ct_head_constants import AIR_HU_VAL
 
 
@@ -18,12 +18,10 @@ class CTHeadDataset3d(CTHeadDataset):
             phase: one of 'train','val','test'
             is_training_set: If true, load dataset for training. Otherwise, load for test inference.
         """
-        self.val_split = args.val_split
         super(CTHeadDataset3d, self).__init__(args, phase, is_training_set=is_training_set)
         self.aneurysm_idxs = [i for i in range(len(self.series_list)) if self.series_list[i].is_aneurysm]
         self.min_aneurysm_slices = args.min_abnormal_slices
         self.num_slices = args.num_slices
-        self.stride_len = args.num_slices if self.is_training_set else args.eval_stride
         self.abnormal_prob = args.abnormal_prob if self.is_training_set else None
         self.use_hem = args.use_hem if self.is_training_set else None
 
@@ -32,50 +30,44 @@ class CTHeadDataset3d(CTHeadDataset):
         self.series_to_window_idx = []  # Maps series indices to base window index for that series
         window_start = 0
         for i, s in enumerate(self.series_list):
-            num_windows = len(s) // self.stride_len + (1 if len(s) % self.stride_len > 0 else 0)
+            num_windows = len(s) // self.num_slices + (1 if len(s) % self.num_slices > 0 else 0)
             self.window_to_series_idx += num_windows * [i]
             self.series_to_window_idx.append(window_start)
             window_start += num_windows
 
         if self.use_hem:
             # Initialize a HardExampleMiner with IDs formatted like (series_idx, start_idx)
-            self.hem_epoch_size = args.hem_epoch_size
             example_ids = []
             for window_idx in range(len(self)):
                 series_idx = self.window_to_series_idx[window_idx]
                 series = self.series_list[series_idx]
-                slice_offset = (window_idx - self.series_to_window_idx[series_idx]) * self.stride_len
-                start_idx = series.slice_num_to_idx(slice_offset + 1)
-                if not self._is_abnormal_window(series_idx, start_idx):
+                if not series.is_aneurysm:
                     # Only include negative examples in the HardExampleMiner
+                    slice_offset = (window_idx - self.series_to_window_idx[series_idx]) * self.num_slices
+                    start_idx = series.slice_num_to_idx(slice_offset + 1)
                     example_ids.append((series_idx, start_idx))
-            self.hard_example_miner = util.HardExampleMiner(example_ids, norm_method=args.hem_norm_method)
+            self.hard_example_miner = util.HardExampleMiner(example_ids)
 
     def _include_series(self, s):
         """Predicate for whether to include a series in this dataset."""
-        if self.phase == 'train' and (s.phase == 'test' or s.phase == 'val_{}'.format(self.val_split)):
-            return False
-        elif self.phase == 'val' and s.phase != 'val_{}'.format(self.val_split):
-            return False
-        elif self.phase == 'test' and s.phase != 'test':
-            return False
+        if self.phase == 'all':
+            return True
 
+        if s.phase != self.phase:
+            return False
         if s.mode != ('contrast' if self.use_contrast else 'non_contrast'):
             return False
-
-        # In training mode, need all aneurysm studies to be well formed
-        if not self.include_normals and not s.is_aneurysm:
+        if s.is_aneurysm and (s.aneurysm_ranges is None or s.aneurysm_bounds is None):
             return False
-        if s.is_aneurysm and s.aneurysm_mask_path is None:
+        if not self.is_test_mode and s.is_aneurysm and s.aneurysm_mask_path is None:
+            return False
+        if not s.is_aneurysm and not self.include_normals:
             return False
 
         return True
 
     def __len__(self):
-        if self.use_hem:
-            return self.hem_epoch_size
-        else:
-            return len(self.window_to_series_idx)
+        return len(self.window_to_series_idx)
 
     def __getitem__(self, idx):
         # Choose series and window within series
@@ -87,18 +79,14 @@ class CTHeadDataset3d(CTHeadDataset):
             if not series.is_aneurysm:
                 series_idx = random.choice(self.aneurysm_idxs)
                 series = self.series_list[series_idx]
-            start_idx = self._get_start_idx(series, force_aneurysm=True)
+            start_idx = self._get_start_idx(series, force_aneurysm=True, randomize=self.is_training_set)
         elif self.use_hem:
             # Draw from distribution that weights hard negatives more heavily than easy examples
             series_idx, start_idx = self.hard_example_miner.sample()
             series = self.series_list[series_idx]
         else:
             # Get sequential windows through the whole series
-            slice_offset = (idx - self.series_to_window_idx[series_idx]) * self.stride_len
-            if self.do_jitter:
-                # Randomly jitter start offset by num_slices / 2
-                slice_offset += random.randint(-self.num_slices // 2, self.num_slices // 2)
-                slice_offset = min(max(slice_offset, 1), len(series) - self.num_slices + 1)
+            slice_offset = (idx - self.series_to_window_idx[series_idx]) * self.num_slices
             start_idx = series.slice_num_to_idx(slice_offset + 1)
 
         volume, mask = self._load_volume(series, start_idx)
@@ -111,8 +99,8 @@ class CTHeadDataset3d(CTHeadDataset):
                   'is_abnormal': is_abnormal,
                   'dset_path': series.dset_path,
                   'slice_idx': start_idx,
-                  'series_idx': series_idx,
-                  'brain_bbox': np.array(series.brain_bbox)}
+                  'series_idx': series_idx}
+        # 'brain_bbox': np.array(series.brain_bbox)}
 
         return volume, target
 
@@ -120,7 +108,7 @@ class CTHeadDataset3d(CTHeadDataset):
         """Get a floating point label for a series at given index."""
         return float(self.series_list[series_idx].is_aneurysm)
 
-    def update_hard_example_miner(self, example_ids, losses, do_reset=False):
+    def update_hard_example_miner(self, example_ids, losses):
         """Update HardExampleMiner with set of example_ids and corresponding losses.
 
         This should be called at the end of every epoch.
@@ -128,32 +116,21 @@ class CTHeadDataset3d(CTHeadDataset):
         Args:
             example_ids: List of example IDs which were used during training.
             losses: List of losses for each example ID (must be parallel to example_ids).
-            do_reset: Reset to the uniform distribution.
         """
         example_ids = [(series_idx, start_idx) for series_idx, start_idx in example_ids
-                       if not self._is_abnormal_window(series_idx, start_idx)]
+                       if series_idx not in self.aneurysm_idxs]
         if self.use_hem:
             self.hard_example_miner.update_distribution(example_ids, losses)
-            if do_reset:
-                self.hard_example_miner.make_uniform()
 
-    def _is_abnormal_window(self, series_idx, start_idx):
-        series = self.series_list[series_idx]
-
-        if series.is_aneurysm and series.aneurysm_bounds is not None \
-                and start_idx <= series.aneurysm_bounds[1] \
-                and start_idx + self.num_slices - 1 >= series.aneurysm_bounds[0]:
-            return True
-
-        return False
-
-    def _get_start_idx(self, series, force_aneurysm):
+    def _get_start_idx(self, series, force_aneurysm, randomize=True):
         """Get a random start index for num_slices from a series.
 
         Args:
             series: Series to sample from.
             force_aneurysm: If true, force the range to contain the brain.
                 Else sample the start index uniformly at random.
+            randomize: If true, randomize the position of the aneurysm within the slices.
+                Else put the aneurysm in the middle of the window.
 
         Returns:
             Randomly sampled start index into series.
@@ -162,12 +139,18 @@ class CTHeadDataset3d(CTHeadDataset):
         hi_slice = len(series) - self.num_slices + 1
 
         # Get actual slice number
-        if force_aneurysm:
+        if force_aneurysm and randomize:
             # Take a random window containing at least min_visible_slices slices of aneurysm(s)
             min_start = max(lo_slice, series.aneurysm_bounds[0] + self.min_aneurysm_slices - self.num_slices)
             max_start = max(min_start, min(hi_slice, series.aneurysm_bounds[1] - self.min_aneurysm_slices + 1))
             start_num = random.randint(min_start, max_start)
+        elif force_aneurysm:
+            # Center aneurysm(s) in the window
+            aneurysm_center = (series.aneurysm_bounds[0] + series.aneurysm_bounds[1]) // 2
+            start_num = max(1, aneurysm_center - self.num_slices // 2 + 1)
         else:
+            if not randomize:
+                raise RuntimeError('Cannot center on a non-existent aneurysm.')
             # Randomly sample num_slices from the study
             start_num = random.randint(lo_slice, hi_slice + 1)
 
@@ -193,11 +176,7 @@ class CTHeadDataset3d(CTHeadDataset):
         with h5py.File(os.path.join(self.data_dir, 'data.hdf5'), 'r') as hdf5_fh:
             volume = hdf5_fh[series.dset_path][start_idx:start_idx + self.num_slices]
             if series.is_aneurysm:
-                if series.aneurysm_mask_path is not None and series.aneurysm_mask_path in hdf5_fh:
-                    mask = hdf5_fh[series.aneurysm_mask_path][start_idx:start_idx + self.num_slices]
-                else:
-                    util.print_err('Warning: Missing mask for {}'.format(series.dset_path))
-                    mask = np.zeros_like(volume, dtype=np.float32)
+                mask = hdf5_fh[series.aneurysm_mask_path][start_idx:start_idx + self.num_slices]
                 mask = mask.astype(np.float32)
             else:
                 mask = np.zeros_like(volume, dtype=np.float32)

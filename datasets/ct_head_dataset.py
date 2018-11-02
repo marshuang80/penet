@@ -26,7 +26,7 @@ class CTHeadDataset(BaseCTDataset):
         self.use_contrast = args.use_contrast
         self.resize_shape = args.resize_shape
         self.is_test_mode = not args.is_training
-        self.include_normals = True if self.is_test_mode else args.include_normals
+        self.include_normals = args.include_normals if args.is_training else None
 
         # Augmentation
         self.crop_shape = args.crop_shape
@@ -34,7 +34,6 @@ class CTHeadDataset(BaseCTDataset):
         self.do_hflip = self.is_training_set and args.do_hflip
         self.do_vflip = self.is_training_set and args.do_vflip
         self.do_rotate = self.is_training_set and args.do_rotate
-        self.do_jitter = self.is_training_set and args.do_jitter
 
         self.threshold_size = args.threshold_size
         self.pixel_dict = {
@@ -114,11 +113,9 @@ class CTHeadDataset(BaseCTDataset):
                 mask = self._rescale(mask, interpolation=cv2.INTER_LINEAR)
 
         if self.crop_shape is not None:
-            row_margin = max(0, inputs.shape[-2] - self.crop_shape[-2])
-            col_margin = max(0, inputs.shape[-1] - self.crop_shape[-1])
-            # Random crop during training, center crop during test inference
-            row = random.randint(0, row_margin) if self.is_training_set else row_margin // 2
-            col = random.randint(0, col_margin) if self.is_training_set else col_margin // 2
+            # Crop volume and mask with the same random crop
+            row = random.randint(0, inputs.shape[-2] - self.crop_shape[-2] - 1)
+            col = random.randint(0, inputs.shape[-1] - self.crop_shape[-1] - 1)
             inputs, mask = self._crop(inputs, mask, col, row, col + self.crop_shape[-1], row + self.crop_shape[-2])
 
         if self.do_vflip and random.random() < 0.5:

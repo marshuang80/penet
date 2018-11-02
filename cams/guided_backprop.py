@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class GuidedBackPropagation(BaseCAM):
 
     def __init__(self, model, device, is_binary, is_3d):
@@ -33,7 +32,7 @@ class GuidedBackPropagation(BaseCAM):
         self.preds = self.model(self.inputs)
 
         if self.is_binary:
-            self.probs = torch.sigmoid(self.preds)[0]
+            self.probs = F.sigmoid(self.preds)[0]
         else:
             self.probs = F.softmax(self.preds, dim=1)[0]
         self.prob, self.idx = self.probs.sort(0, True)

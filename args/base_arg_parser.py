@@ -40,16 +40,15 @@ class BaseArgParser(object):
                                  help='Comma-separated 2D shape for images after resizing (before cropping).')
         self.parser.add_argument('--crop_shape', type=str, default='208,208',
                                  help='Comma-separated 2D shape for images after cropping (crop comes after resize).')
-        self.parser.add_argument('--min_abnormal_slices', type=int, default=3,
+        self.parser.add_argument('--min_abnormal_slices', type=int, default=4,
                                  help='Minimum number of slices with abnormality for window to be considered abnormal.')
         self.parser.add_argument('--num_channels', default=3, type=int, help='Number of channels in an image.')
         self.parser.add_argument('--num_classes', default=1, type=int, help='Number of classes to predict.')
-        self.parser.add_argument('--num_slices', default=16, type=int, help='Number of slices to use per window.')
-        self.parser.add_argument('--eval_stride', default=8, type=int, help='Stride between windows for evaluation.')
+        self.parser.add_argument('--num_slices', default=32, type=int, help='Number of slices to use per study.')
         self.parser.add_argument('--num_visuals', type=int, default=4,
                                  help='Maximum number of visuals per evaluation.')
         self.parser.add_argument('--num_workers', default=8, type=int, help='Number of threads for the DataLoader.')
-        self.parser.add_argument('--agg_method', type=str, default='', choices=('max', 'mean', 'trainable', ''),
+        self.parser.add_argument('--agg_method', type=str, default='', choices=('max', 'mean', 'logreg', ''),
                                  help='Method for aggregating window-level predictions to a single prediction.')
         self.parser.add_argument('--save_dir', type=str, default='ckpts/',
                                  help='Directory in which to save model checkpoints.')
@@ -65,7 +64,7 @@ class BaseArgParser(object):
         self.parser.add_argument('--vstep_size', type=int, default=1, 
                                  help='Number of slices to move forward at a time')
         self.parser.add_argument('--dataset', type=str, required=True,
-                                 choices=('head', 'head_brain', 'spine', 'kinetics'),
+                                 choices=('head', 'head_brain', 'spine', 'kinetics', 'pe'),
                                  help='Dataset to use. Gets mapped to CTHeadDataset3d or CTSpineDataset3d.')
         self.parser.add_argument('--deterministic', type=util.str_to_bool, default=False,
                                  help='If true, set a random seed to get deterministic results.')
@@ -80,14 +79,14 @@ class BaseArgParser(object):
                                  help='If true, only use the topmost window in each series.')
         self.parser.add_argument('--use_brain_range', type=util.str_to_bool, default=True,
                                  help='If true, restrict to range containing brain.')
-        self.parser.add_argument('--eval_mode', type=str, choices=('window','series'), default='series',
+        self.parser.add_argument('--eval_mode', type=str, choices=('window', 'series'), default='series',
                                  help='Evaluation mode for reporting metrics.')
         self.parser.add_argument('--do_classify', type=util.str_to_bool, default=False,
                                  help='If True, perform classification.')
         self.parser.add_argument('--do_segment', type=util.str_to_bool, default=True,
                                  help='If True, perform segmentation.')
-        self.parser.add_argument('--val_split', type=int, choices=(0, 1, 2, 3), required=True,
-                                 help='Split number for validation set. Zero means None, non-zero specifies a split.')
+        self.parser.add_argument('--pe_types', type=eval, default='["central", "segmental"]',
+                                 help='Types of PE to include.')
         self.is_training = None
 
     def parse_args(self):
@@ -147,10 +146,12 @@ class BaseArgParser(object):
             args.dataset = 'CTSpineDataset3d'
         elif args.dataset == 'kinetics':
             args.dataset = 'KineticsDataset'
+        elif args.dataset == 'pe':
+            args.dataset = 'CTPEDataset3d'
 
         if self.is_training and args.use_pretrained:
-            if args.model != 'XNet':
-                raise ValueError('Pre-training only supported for XNet loading XNetClassifier.')
+            if args.model != 'XNet' and args.model != 'XNetClassifier':
+                raise ValueError('Pre-training only supported for XNet/XNetClassifier loading XNetClassifier.')
             if not args.ckpt_path:
                 raise ValueError('Must specify a checkpoint path for pre-trained model.')
 
@@ -184,8 +185,8 @@ class BaseArgParser(object):
             if args.model_depth != 50:
                 raise ValueError('Invalid model depth for XNet: {}'.format(args.model_depth))
             args.loader = 'window'
-            args.dataset = 'KineticsDataset'
-            args.data_loader = 'KineticsDataLoader'
+            if args.dataset == 'KineticsDataset':
+                args.data_loader = 'KineticsDataLoader'
 
         # Set up output dir (test mode only)
         if not self.is_training:

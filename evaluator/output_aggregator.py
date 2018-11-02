@@ -1,37 +1,35 @@
 import numpy as np
-import random
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import util
 
 from collections import defaultdict
-from models import AggNet
 
 
 class OutputAggregator(object):
-    def __init__(self, agg_method, num_epochs=5, batch_size=16):
+    def __init__(self, agg_method, num_bins=3, num_epochs=5):
         """
         Args:
             agg_method: Name of method used to combine list of outputs into a single output.
-               Options are 'max', 'mean', 'trainable'.
+               Options are 'max', 'mean'.
             num_bins: Number of bins to use for the histogram if logreg is chosen
-            num_epochs: number of epochs to train the aggregator model for
-            batch_size: Batch size for trainable aggregator.
+            num_epochs: number of epochs to train the logreg model for
         """
         self.agg_method = agg_method
-        self.batch_size = batch_size
         if self.agg_method == 'max':
             self._reduce = np.max
         elif self.agg_method == 'mean':
             self._reduce = np.mean
-        elif self.agg_method == 'trainable':
+        elif self.agg_method == 'logreg':
+            self.num_bins = num_bins
             self.num_epochs = num_epochs
             self._reduce = None
         else:
             raise ValueError('Invalid reduce function: {}'.format(agg_method))
 
-        self.trained_aggregator = None
+        self.classifier = None
 
     def aggregate(self, keys, outputs, data_loader, phase, device):
         """Aggregate model outputs into groups using keys.
@@ -51,53 +49,39 @@ class OutputAggregator(object):
         for key, output in zip(keys, outputs):
             key2outputs[key].append(output)
 
-        if self.agg_method == 'trainable' and phase == 'train':
-            self.train_aggregator(key2outputs, data_loader, device)
+        if self.agg_method == 'logreg' and phase == 'train':
+            self.train_log_reg(key2outputs, data_loader, device)
 
             # Reduce outputs for each key into a single output
         return {key: self._reduce(outputs) for key, outputs in key2outputs.items()}
 
-    def train_aggregator(self, key2outputs, data_loader, device):
+    def train_log_reg(self, key2outputs, data_loader, device):
         """Trains the logistic regression reducer and creates and stores the reduce fn."""
-        util.print_err('Training aggregator...')
-
         # Reset the model parameters every epoch
-        self.trained_aggregator = AggNet(in_channels=1).to(device)
+        self.classifier = nn.Linear(self.num_bins, 1).float().to(device)
 
-        # Binary classification
-        optimizer = optim.Adam(self.trained_aggregator.parameters())
-        loss_fn = nn.BCEWithLogitsLoss().to(device)
+        # Binary classification, for now >:P
+        optimizer = optim.Adam(self.classifier.parameters(), lr=.001)
+        loss_fn = nn.BCEWithLogitsLoss()
 
-        examples = [(k, v) for k, v in key2outputs.items()]
         for epoch in range(self.num_epochs):
-            # Shuffle and create batches
-            random.shuffle(examples)
-            batches = [examples[i: i + self.batch_size] for i in range(0, len(examples), self.batch_size)]
-
             # Iterate through all series
-            for batch in batches:
-                if len(batch) == 0:
-                    break
-                keys = [k for k, _ in batch]
-                probs = [v for _, v in batch]
-                max_len = max(len(p) for p in probs)
-                probs = [p + [0.] * (max_len - len(p)) for p in probs]
-                labels = [data_loader.get_series_label(k) for k in keys]
+            for key in key2outputs:
+                probs = key2outputs[key]
+                hist, _ = np.histogram(probs, bins=self.num_bins, range=(0, 1))
 
-                inputs = torch.tensor(probs, dtype=torch.float32).unsqueeze(1).to(device)
-                labels = torch.tensor(labels, dtype=torch.float32).unsqueeze(1).to(device)
-                logits = self.trained_aggregator(inputs)
-                loss = loss_fn(logits, labels)
+                inputs = torch.tensor(hist, dtype=torch.float32).to(device)
+                label = torch.tensor([data_loader.get_series_label(key)], dtype=torch.float32).to(device)
+                logits = self.classifier(inputs)
+                loss = loss_fn(logits, label)
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-        def trained_aggregator_fn(model_outputs):
-            if len(model_outputs) < 5:
-                return np.array([0.])
-            inputs_ = torch.tensor(model_outputs, dtype=torch.float32).view(1, 1, -1).to(device)
-            outputs = torch.sigmoid(self.trained_aggregator(inputs_)).detach().cpu().numpy().squeeze()
-            return outputs
+        def log_reg_reduce(outputs):
+            hist_, _ = np.histogram(outputs, bins=self.num_bins, range=(0, 1))
+            inputs_ = torch.tensor(hist_, dtype=torch.float32).to(device)
+            return F.sigmoid(self.classifier(inputs_)).detach().cpu().numpy()
 
-        self._reduce = trained_aggregator_fn
+        self._reduce = log_reg_reduce

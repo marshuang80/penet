@@ -14,5 +14,3 @@ NON_CON_HU_MEAN = 0.21411   # Mean pixel value after normalization and clipping
 
 W_CENTER_DEFAULT = 40.      # Default window center for viewing
 W_WIDTH_DEFAULT = 400.      # Default window width
-
-MAX_HEAD_HEIGHT_MM = 240    # 99th percentile head height in millimeters

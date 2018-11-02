@@ -128,10 +128,8 @@ class XNet(nn.Module):
 
     def load_pretrained(self, ckpt_path, gpu_ids):
         """Load parameters from a pre-trained XNetClassifier from checkpoint at ckpt_path.
-
         Args:
             ckpt_path: Path to checkpoint for XNetClassifier.
-
         Adapted from:
             https://discuss.pytorch.org/t/how-to-load-part-of-pre-trained-model/1113/2
         """
@@ -151,14 +149,13 @@ class XNet(nn.Module):
 
     def fine_tuning_parameters(self, fine_tuning_boundary, fine_tuning_lr=0.0):
         """Get parameters for fine-tuning the model.
-
         Args:
             fine_tuning_boundary: Name of first layer after the fine-tuning layers.
             fine_tuning_lr: Learning rate to apply to fine-tuning layers (all layers before `boundary_layer`).
-
         Returns:
             List of dicts that can be passed to an optimizer.
         """
+
         def gen_params(boundary_layer_name, fine_tuning):
             """Generate parameters, if fine_tuning generate the params before boundary_layer_name.
             If unfrozen, generate the params at boundary_layer_name and beyond."""

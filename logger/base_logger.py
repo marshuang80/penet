@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import torch
+import torch.nn.functional as F
 import util
 
 from datetime import datetime
@@ -51,15 +51,41 @@ class BaseLogger(object):
     def _plot_curves(self, curves_dict):
         """Plot all curves in a dict as RGB images to TensorBoard."""
         for name, curve in curves_dict.items():
-            curve_img = util.get_plot(name, curve)
+            fig = plt.figure()
+            ax = plt.gca()
+
+            plot_type = name.split('_')[-1]
+            ax.set_title(plot_type)
+            if plot_type == 'PRC':
+                precision, recall, _ = curve
+                ax.step(recall, precision, color='b', alpha=0.2, where='post')
+                ax.fill_between(recall, precision, step='post', alpha=0.2, color='b')
+                ax.set_xlabel('Recall')
+                ax.set_ylabel('Precision')
+            elif plot_type == 'ROC':
+                false_positive_rate, true_positive_rate, _ = curve
+                ax.plot(false_positive_rate, true_positive_rate, color='b')
+                ax.plot([0, 1], [0, 1], 'r--')
+                ax.set_xlabel('False Positive Rate')
+                ax.set_ylabel('True Positive Rate')
+            else:
+                ax.plot(curve[0], curve[1], color='b')
+
+            ax.set_ylim([0.0, 1.05])
+            ax.set_xlim([0.0, 1.0])
+
+            fig.canvas.draw()
+
+            curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+            curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.global_step)
 
-    def visualize(self, inputs, cls_logits, seg_logits, targets_dict, phase, unique_id=None):
+    def visualize(self, inputs, cls_logits, targets_dict, phase, unique_id=None):
         """Visualize predictions and targets in TensorBoard.
 
         Args:
             inputs: Inputs to the model.
-            seg_logits: Logits predicted by the model.
+            cls_logits: Classification logits predicted by the model.
             targets_dict: Dictionary of information about the target labels.
             phase: One of 'train', 'val', or 'test'.
             unique_id: A unique ID to append to every image title. Allows
@@ -74,15 +100,8 @@ class BaseLogger(object):
             return 0
 
         cls_logits = cls_logits.detach().to('cpu')
-        seg_logits = seg_logits.detach().to('cpu')
-        probs = None
-        masks = targets_dict['mask']
 
-        cls_probs = torch.sigmoid(cls_logits).numpy()
-        if self.do_segment:
-            if masks is not None:
-                masks = masks.numpy()
-            probs = torch.sigmoid(seg_logits).numpy()
+        cls_probs = F.sigmoid(cls_logits).numpy()
 
         is_3d = inputs.dim() > 4
         num_visualized = 0
@@ -96,11 +115,6 @@ class BaseLogger(object):
 
             mask_np = None
             output_np = None
-            if probs is not None:
-                # Plot mask and overlaid prediction to TensorBoard
-                if masks is not None:
-                    mask_np = util.add_heat_map(input_np, masks[i], color_map='binary', normalize=False)
-                output_np = util.add_heat_map(input_np, probs[i], color_map='binary', normalize=False)
 
             label = 'abnormal' if targets_dict['is_abnormal'][i] else 'normal'
             if self.do_segment:
@@ -112,7 +126,7 @@ class BaseLogger(object):
                 visuals_np = input_np
                 title = 'input'
 
-            tag = '{}/{}/{}_{}_{:.4f}'.format(phase, title, label, i + 1, cls_probs[i][0])
+            tag = '{}/{}/{}_{}_{:.4f}'.format(phase, title, label, targets_dict['dset_path'][i], cls_probs[i][0])
             if unique_id is not None:
                 tag += '_{}'.format(unique_id)
 

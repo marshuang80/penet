@@ -5,7 +5,6 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 
-
 class BaseCTDataset(Dataset):
     """Base dataset for CT studies."""
 

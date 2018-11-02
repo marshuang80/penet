@@ -53,11 +53,10 @@ class TrainLogger(BaseLogger):
         """Log info for start of an iteration."""
         self.iter_start_time = time()
 
-    def log_iter(self, inputs, cls_logits, seg_logits, targets, cls_loss, seg_loss, optimizer):
+    def log_iter(self, inputs, cls_logits, targets, cls_loss, optimizer):
         """Log results from a training iteration."""
         cls_loss = None if cls_loss is None else cls_loss.item()
-        seg_loss = None if seg_loss is None else seg_loss.item()
-        self._update_loss_meters(inputs.size(0), cls_loss, seg_loss)
+        self._update_loss_meters(inputs.size(0), cls_loss)
 
         # Periodically write to the log and TensorBoard
         if self.iter % self.iters_per_print == 0:
@@ -69,7 +68,7 @@ class TrainLogger(BaseLogger):
 
             # Write all errors as scalars to the graph
             scalar_dict = self._get_avg_losses()
-            scalar_dict.update({'lr_{}'.format(i): pg['lr'] for i, pg in enumerate(optimizer.param_groups)})
+            scalar_dict.update({'train/lr{}'.format(i): pg['lr'] for i, pg in enumerate(optimizer.param_groups)})
             self._log_scalars(scalar_dict, print_to_stdout=False)
             self._reset_loss_meters()
 
@@ -77,7 +76,7 @@ class TrainLogger(BaseLogger):
 
         # Periodically visualize up to num_visuals training examples from the batch
         if self.iter % self.iters_per_visual == 0:
-            self.visualize(inputs, cls_logits, seg_logits, targets, phase='train')
+            self.visualize(inputs, cls_logits, targets, phase='train')
 
     def end_iter(self):
         """Log info for end of an iteration."""
