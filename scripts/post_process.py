@@ -38,6 +38,9 @@ def post_process(args, series_list):
                 series = s
         assert series is not None, 'Could not find series with path {}'.format(dset_path)
 
+        if not series.is_bottom_up:
+            mask = np.flipud(mask)
+
         if args.get_gif:
             # Create a GIF heat-map overlay with the segmentation mask
             with h5py.File(os.path.join(args.data_dir, 'data.hdf5'), 'r') as hdf5_fh:
@@ -48,15 +51,13 @@ def post_process(args, series_list):
             print('Generating heat map...')
             volume = np.expand_dims(volume, -1)
             volume = util.apply_window(volume, 40., 400.)
-            volume = volume.astype(np.float32) / 255.
+            volume = np.float32(volume) / 255.
 
             # Overlay mask and write to GIF
             volume = util.add_heat_map(volume, mask, alpha_img=0.33, color_map='binary', normalize=False)
-
-            volume = (volume * 255).astype(np.uint8)
             video_clip = mpy.ImageSequenceClip(list(volume), fps=args.gif_fps)
 
-            output_path = os.path.join(args.gif_dir, os.path.basename(mask_path)[:-4] + '.gif')
+            output_path = os.path.join(os.path.dirname(mask_path), os.path.basename(mask_path)[:-4] + '.gif')
             print('Writing GIF...')
             video_clip.write_gif(output_path)
 
@@ -220,8 +221,6 @@ if __name__ == '__main__':
                         help='Frames per second in an output GIF.')
     parser.add_argument('--get_gif', type=util.str_to_bool, default=False,
                         help='If set, create a GIF overlay of the mask.')
-    parser.add_argument('--gif_dir', type=str, default='/data/head-ct-gifs',
-                        help='Output directory for GIF overlay results.')
     parser.add_argument('--get_features', type=util.str_to_bool, default=True,
                         help='If set, generate features from the segmentation mask.')
     parser.add_argument('--features_dir', type=str, default='features/',
@@ -235,10 +234,7 @@ if __name__ == '__main__':
 
     args_ = parser.parse_args()
 
-    if args_.get_gif:
-        os.makedirs(args_.gif_dir, exist_ok=True)
-    if args_.get_features:
-        os.makedirs(args_.features_dir, exist_ok=True)
+    os.makedirs(args_.features_dir, exist_ok=True)
 
     if args_.get_features and args_.phase == '':
         raise ValueError('Must specify phase of data in mask_dir if get_features is true.')

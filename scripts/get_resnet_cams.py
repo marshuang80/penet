@@ -69,12 +69,12 @@ def get_cams(args):
         output_path_origin = os.path.join(args.cam_dir, 'orig_{}.png'.format(num_generated + 1))
 
         print('Writing Original to {}...'.format(output_path_origin))
-        orig = util.normalize_image(np_cam)
+        orig = util.normalize_to_image(np_cam)
         orig = np.squeeze(orig)
         imsave(output_path_origin, orig.astype(np.uint8))
         
         print('Writing CAM to {}...'.format(output_path_cam))
-        cam_png = util.normalize_image(final_cam)
+        cam_png = util.normalize_to_image(final_cam)
         cam_png = np.squeeze(cam_png)
         imsave(output_path_cam, cam_png.astype(np.uint8))
         
@@ -139,7 +139,7 @@ def test_2d(args):
             cam = cv2.resize(cam, img.shape[:2])
 
             if args.gbp:
-                g_cam = util.normalize_image(guided_backprop * np.expand_dims(cam, axis=2))
+                g_cam = util.normalize_to_image(guided_backprop * np.expand_dims(cam, axis=2))
                 output_path = os.path.join(args.cam_dir, 'gcam_{}.png'.format(i + 1))
                 imsave(output_path, g_cam.astype(np.uint8))
 

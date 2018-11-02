@@ -1,8 +1,6 @@
 import cv2
-import json
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import SimpleITK as sitk
 import scipy.ndimage.interpolation as interpolation
 
@@ -10,15 +8,16 @@ from scipy import interpolate
 
 
 def apply_window(img, w_center, w_width):
-    """Apply a window to raw Hounsfield Units to get a PNG.
-    Args:
-        img: Raw Hounsfield Units for every pixel.
-        w_center: Center of window to apply (e.g. 40 Hounsfield Units).
-        w_width: Total width of window to apply (e.g. 400 Hounsfield Units).
-    Returns:
-        Single-byte pixel values for the Hounsfield Units image as a windowed greyscale image.
-    """
+    """Window a NumPy array of raw Hounsfield Units.
 
+    Args:
+        img: Image to apply the window to. NumPy array of any shape.
+        w_center: Center of window.
+        w_width: Width of window.
+
+    Returns:
+        img_np: NumPy array of after windowing. Values in range [y_min, y_max].
+    """
     # Convert to float
     img = np.copy(img).astype(np.float64)
 
@@ -57,48 +56,6 @@ def get_crop(bbox):
     return x1, y1, side_length
 
 
-def get_plot(title, curve):
-    """Get a NumPy array for the given curve.
-
-    Args:
-        title: Name of curve.
-        curve: NumPy array of x and y coordinates.
-        mark_rads: Whether to mark radiologist performance.
-
-    Returns:
-        NumPy array to be used as a PNG image.
-    """
-    fig = plt.figure()
-    ax = plt.gca()
-
-    plot_type = title.split('_')[-1]
-    ax.set_title(plot_type)
-    if plot_type == 'PRC':
-        precision, recall, _ = curve
-        ax.step(recall, precision, color='b', alpha=0.2, where='post')
-        ax.fill_between(recall, precision, step='post', alpha=0.2, color='b')
-        ax.set_xlabel('Recall')
-        ax.set_ylabel('Precision')
-    elif plot_type == 'ROC':
-        false_positive_rate, true_positive_rate, _ = curve
-        ax.plot(false_positive_rate, true_positive_rate, color='b')
-        ax.plot([0, 1], [0, 1], 'r--')
-        ax.set_xlabel('False Positive Rate')
-        ax.set_ylabel('True Positive Rate')
-    else:
-        ax.plot(curve[0], curve[1], color='b')
-
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlim([0.0, 1.0])
-
-    fig.canvas.draw()
-
-    curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-
-    return curve_img
-
-
 def pad_to_shape(array, output_shape, offsets, dtype=np.float32):
     """Pad an array with zeros to the desired output shape.
     Args:
@@ -128,10 +85,13 @@ def pad_to_shape(array, output_shape, offsets, dtype=np.float32):
     # Insert the array in the result at the specified offsets
     result[tgt_idx] = array[src_idx]
 
+    # Trim down to output_shape
+    result = result[[range(0, d) for d in output_shape]]
+
     return result
 
 
-def un_normalize(tensor, img_format, pixel_dict, dtype=np.int16):
+def un_normalize(tensor, img_format, pixel_dict):
     """Un-normalize a PyTorch Tensor seen by the model into a NumPy array of
     pixels fit for visualization. If using raw Hounsfield Units, window the input.
 
@@ -141,10 +101,9 @@ def un_normalize(tensor, img_format, pixel_dict, dtype=np.int16):
             If image, shape (batch_size, num_channels, height, width).
         img_format: Input image format to the network. Options are 'raw' or 'png'.
         pixel_dict: Dictionary containing min, max, avg of pixel data; window center, width.
-        dtype: Desired output data type for each entry the image array.
 
     Returns:
-        pixels_np: Numpy ndarray with entries of type `dtype`.
+        pixels_np: Numpy ndarray with entries of type np.uint8.
     """
     pixels_np = tensor.cpu().float().numpy()
 
@@ -154,7 +113,7 @@ def un_normalize(tensor, img_format, pixel_dict, dtype=np.int16):
     else:
         pixels_np = (pixels_np + pixel_dict['avg_val']) * (pixel_dict['max_val'] - pixel_dict['min_val']) \
                     + pixel_dict['min_val']
-        pixels_np = pixels_np.astype(dtype=dtype)
+        pixels_np = pixels_np.astype(np.int16)  # 16-bit int for Hounsfield Units
         pixels_np = apply_window(pixels_np, pixel_dict['w_center'], pixel_dict['w_width'])
         
     return pixels_np
@@ -291,7 +250,7 @@ def add_heat_map(pixels_np, intensities_np, alpha_img=0.33, color_map='magma', n
     assert(np.max(intensities_np) <= 1 and np.min(intensities_np) >= 0)
     color_map_fn = plt.get_cmap(color_map)
     if normalize:
-        intensities_np = normalize_image(intensities_np)
+        intensities_np = normalize_to_image(intensities_np)
     else:
         intensities_np *= 255
     heat_map = color_map_fn(intensities_np.astype(np.uint8))
@@ -300,10 +259,8 @@ def add_heat_map(pixels_np, intensities_np, alpha_img=0.33, color_map='magma', n
     else:
         heat_map = heat_map[:, :, :, :3]
 
-    # Combine and normalize.
     new_img = alpha_img * pixels_np.astype(np.float32) + (1. - alpha_img) * heat_map.astype(np.float32)
-    new_img -= np.min(new_img)
-    new_img /= (np.max(new_img) + 1e-7)
+    new_img = np.uint8(normalize_to_image(new_img))
 
     return new_img
 
@@ -539,6 +496,45 @@ def get_min_bbox(box_1, box_2):
     return x1, y1, x2, y2
 
 
+def get_plot(title, curve):
+    """Get a NumPy array for the given curve.
+    Args:
+        title: Name of curve.
+        curve: NumPy array of x and y coordinates.
+    Returns:
+        NumPy array to be used as a PNG image.
+    """
+    fig = plt.figure()
+    ax = plt.gca()
+
+    plot_type = title.split('_')[-1]
+    ax.set_title(plot_type)
+    if plot_type == 'PRC':
+        precision, recall, _ = curve
+        ax.step(recall, precision, color='b', alpha=0.2, where='post')
+        ax.fill_between(recall, precision, step='post', alpha=0.2, color='b')
+        ax.set_xlabel('Recall')
+        ax.set_ylabel('Precision')
+    elif plot_type == 'ROC':
+        false_positive_rate, true_positive_rate, _ = curve
+        ax.plot(false_positive_rate, true_positive_rate, color='b')
+        ax.plot([0, 1], [0, 1], 'r--')
+        ax.set_xlabel('False Positive Rate')
+        ax.set_ylabel('True Positive Rate')
+    else:
+        ax.plot(curve[0], curve[1], color='b')
+
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlim([0.0, 1.0])
+
+    fig.canvas.draw()
+
+    curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+    return curve_img
+
+
 def resize(cam, input_img, interpolation='linear'):
     """Resizes a volume using factorized bilinear interpolation"""
     temp_cam = np.zeros((cam.shape[0], input_img.size(2), input_img.size(3)))
@@ -562,7 +558,7 @@ def resize(cam, input_img, interpolation='linear'):
     return new_cam
 
 
-def normalize_image(img):
+def normalize_to_image(img):
     """Normalizes img to be in the range 0-255."""
     img -= np.amin(img)
     img /= (np.amax(img) + 1e-7)

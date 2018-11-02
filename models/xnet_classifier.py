@@ -1,5 +1,7 @@
 import math
+import torch
 import torch.nn as nn
+import util
 
 from models.layers.xnet import *
 
@@ -43,13 +45,12 @@ class XNetClassifier(nn.Module):
             self.in_channels = out_channels * XNetBottleneck.expansion
             block_idx += num_blocks
 
-        self.avg_pool = nn.AdaptiveAvgPool3d(1)
-        self.fc = nn.Linear(self.in_channels, num_classes)
+        self.classifier = GAPLinear(self.in_channels, num_classes)
 
         if init_method is not None:
-            self._initialize_weights(init_method)
+            self._initialize_weights(init_method, focal_pi=0.01)
 
-    def _initialize_weights(self, init_method, gain=0.2):
+    def _initialize_weights(self, init_method, gain=0.2, focal_pi=None):
         """Initialize all weights in the network."""
         for m in self.modules():
             if isinstance(m, nn.Conv3d) or isinstance(m, nn.ConvTranspose3d) or isinstance(m, nn.Linear):
@@ -62,7 +63,11 @@ class XNetClassifier(nn.Module):
                 else:
                     raise NotImplementedError('Invalid initialization method: {}'.format(self.init_method))
                 if hasattr(m, 'bias') and m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
+                    if focal_pi is not None and hasattr(m, 'is_output_head') and m.is_output_head:
+                        # Focal loss prior (~0.01 prob for positive, see RetinaNet Section 4.1)
+                        nn.init.constant_(m.bias, -math.log((1 - focal_pi) / focal_pi))
+                    else:
+                        nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.GroupNorm) and m.affine:
                 # Gamma for last GroupNorm in each residual block gets set to 0
                 init_gamma = 0 if hasattr(m, 'is_last_norm') and m.is_last_norm else 1
@@ -83,9 +88,7 @@ class XNetClassifier(nn.Module):
             x = encoder(x)
 
         # Classifier
-        x = self.avg_pool(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        x = self.classifier(x)
 
         return x
 
@@ -101,3 +104,60 @@ class XNetClassifier(nn.Module):
         }
 
         return model_args
+
+    def load_pretrained(self, ckpt_path, gpu_ids):
+        """Load parameters from a pre-trained XNetClassifier from checkpoint at ckpt_path.
+        Args:
+            ckpt_path: Path to checkpoint for XNetClassifier.
+        Adapted from:
+            https://discuss.pytorch.org/t/how-to-load-part-of-pre-trained-model/1113/2
+        """
+        device = 'cuda:{}'.format(gpu_ids[0]) if len(gpu_ids) > 0 else 'cpu'
+        pretrained_dict = torch.load(ckpt_path, map_location=device)['model_state']
+        model_dict = self.state_dict()
+
+        # Filter out unnecessary keys
+        pretrained_dict = {k[len('module.'):]: v for k, v in pretrained_dict.items()}
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+
+        # Overwrite entries in the existing state dict
+        model_dict.update(pretrained_dict)
+
+        # Load the new state dict
+        self.load_state_dict(model_dict)
+
+    def fine_tuning_parameters(self, fine_tuning_boundary, fine_tuning_lr=0.0):
+        """Get parameters for fine-tuning the model.
+        Args:
+            fine_tuning_boundary: Name of first layer after the fine-tuning layers.
+            fine_tuning_lr: Learning rate to apply to fine-tuning layers (all layers before `boundary_layer`).
+        Returns:
+            List of dicts that can be passed to an optimizer.
+        """
+
+        def gen_params(boundary_layer_name, fine_tuning):
+            """Generate parameters, if fine_tuning generate the params before boundary_layer_name.
+            If unfrozen, generate the params at boundary_layer_name and beyond."""
+            saw_boundary_layer = False
+            for name, param in self.named_parameters():
+                if name.startswith(boundary_layer_name):
+                    saw_boundary_layer = True
+
+                if saw_boundary_layer and fine_tuning:
+                    return
+                elif not saw_boundary_layer and not fine_tuning:
+                    continue
+                else:
+                    yield param
+
+        # Fine-tune the network's layers from encoder.2 onwards
+        optimizer_parameters = [{'params': gen_params(fine_tuning_boundary, fine_tuning=True), 'lr': fine_tuning_lr},
+                                {'params': gen_params(fine_tuning_boundary, fine_tuning=False)}]
+
+        # Debugging info
+        util.print_err('Number of fine-tuning layers: {}'
+                       .format(sum(1 for _ in gen_params(fine_tuning_boundary, fine_tuning=True))))
+        util.print_err('Number of regular layers: {}'
+                       .format(sum(1 for _ in gen_params(fine_tuning_boundary, fine_tuning=False))))
+
+        return optimizer_parameters

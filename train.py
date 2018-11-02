@@ -31,11 +31,10 @@ def train(args):
         parameters = model.parameters()
     optimizer = util.get_optimizer(parameters, args)
     lr_scheduler = util.get_scheduler(optimizer, args)
-    if args.ckpt_path and not args.use_pretrained:
+    if args.ckpt_path and not args.use_pretrained and not args.fine_tune:
         ModelSaver.load_optimizer(args.ckpt_path, optimizer, lr_scheduler)
 
     # Get logger, evaluator, saver
-    seg_loss_fn = util.get_loss_fn(is_classification=False, dataset=args.dataset)
     cls_loss_fn = util.get_loss_fn(is_classification=True, dataset=args.dataset, size_average=False)
     data_loader_fn = data_loader.__dict__[args.data_loader]
     train_loader = data_loader_fn(args, phase='train', is_training=True)
@@ -49,46 +48,30 @@ def train(args):
     while not logger.is_finished_training():
         logger.start_epoch()
 
-        # Save example IDs and corresponding losses for hard example mining
-        example_ids = []
-        losses = []
-
         for inputs, target_dict in train_loader:
             logger.start_iter()
             
             with torch.set_grad_enabled(True):
                 inputs.to(args.device)
-                cls_logits, seg_logits = model.forward(inputs)
-                seg_targets = target_dict['mask']
-                seg_loss = seg_loss_fn(seg_logits, seg_targets.to(args.device))
-                loss = seg_loss
+                cls_logits = model.forward(inputs)
+                cls_targets = target_dict['is_abnormal']
+                cls_loss = cls_loss_fn(cls_logits, cls_targets.to(args.device))
+                loss = cls_loss.mean()
 
-                cls_loss = None
-                if args.do_classify:
-                    cls_targets = target_dict['is_abnormal']
-                    cls_loss = cls_loss_fn(cls_logits, cls_targets.to(args.device))
-                    loss += cls_loss.mean()
-
-                    example_ids += [(s, w) for s, w in zip(target_dict['series_idx'].tolist(),
-                                                           target_dict['slice_idx'].tolist())]
-                    losses += cls_loss.detach().to('cpu').numpy().ravel().tolist()
-
-                logger.log_iter(inputs, cls_logits, seg_logits, target_dict, cls_loss.mean(), seg_loss, optimizer)
-                util.step_scheduler(lr_scheduler, global_step=logger.global_step)
+                logger.log_iter(inputs, cls_logits, target_dict, cls_loss.mean(), optimizer)
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
             logger.end_iter()
+            util.step_scheduler(lr_scheduler, global_step=logger.global_step)
 
         metrics, curves = evaluator.evaluate(model, args.device, logger.epoch)
         saver.save(logger.epoch, model, optimizer, lr_scheduler, args.device,
                    metric_val=metrics.get(args.best_ckpt_metric, None))
-        train_loader.dataset.update_hard_example_miner(example_ids, losses,
-                                                       do_reset=(logger.epoch % args.epochs_per_hem_reset) == 0)
         logger.end_epoch(metrics, curves)
-        util.step_scheduler(lr_scheduler, metrics, logger.epoch, best_ckpt_metric=args.best_ckpt_metric)
+        util.step_scheduler(lr_scheduler, metrics, epoch=logger.epoch, best_ckpt_metric=args.best_ckpt_metric)
 
 
 if __name__ == '__main__':

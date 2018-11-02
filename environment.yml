@@ -1,4 +1,3 @@
-name: hsct
 channels:
   - anaconda
   - conda-forge

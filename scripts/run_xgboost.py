@@ -35,14 +35,10 @@ def train_classifier(args):
         val_inputs = pd.read_csv(args.val_path)
         val_labels = pd.read_csv(os.path.join(val_dir, 'labels.csv'))
 
-    # Apply transformation to the features
-    train_inputs, val_inputs = transform(train_inputs, val_inputs)
-    util.print_err('Train inputs: {}'.format(train_inputs))
-    util.print_err('Valid inputs: {}'.format(val_inputs))
-
-    # Debug
-    util.print_err('Train AUROC: {}'.format(sk_metrics.roc_auc_score(train_labels, np.max(train_inputs, axis=1))))
-    util.print_err('Val AUROC: {}'.format(sk_metrics.roc_auc_score(val_labels, np.max(val_inputs, axis=1))))
+    # Pad to max length of train and test inputs
+    max_features = max(train_inputs.shape[1], val_inputs.shape[1])
+    train_inputs = np.pad(train_inputs, [(0, 0), (0, max_features - train_inputs.shape[1])], mode='constant')
+    val_inputs = np.pad(val_inputs, [(0, 0), (0, max_features - val_inputs.shape[1])], mode='constant')
 
     train_data = xgb.DMatrix(train_inputs, label=train_labels, missing=0.)
     val_data = xgb.DMatrix(val_inputs, label=val_labels, missing=0.)
@@ -115,62 +111,14 @@ def run_classifier(args):
     np.save(test_probs_path, test_probs)
 
 
-def transform(train_inputs, val_inputs, num_buckets=2):
-    """Apply a transformation to the train and val input features
-    to prepare them for XGBoost.
-
-    Args:
-        train_inputs: Train inputs of shape (num_examples, num_features).
-        val_inputs: Val inputs of shape (num_examples, num_features).
-        num_buckets: Number of buckets to split features into.
-
-    Returns:
-        (train_inputs, val_inputs): Tuple of the transformed numpy arrays.
-    """
-
-    # Strategy #1: Bucket the inputs into num_buckets equal buckets
-    # train_inputs = make_buckets(train_inputs, num_buckets)
-    # val_inputs = make_buckets(val_inputs, num_buckets)
-    #
-    # train_inputs = np.array([np.max(t, axis=1) for t in train_inputs])
-    # val_inputs = np.array([np.max(t, axis=1) for t in val_inputs])
-
-    # Strategy #2: max, mean, and min
-    # train_inputs = np.stack([np.max(train_inputs, axis=1), np.mean(train_inputs, axis=1),
-    #                          np.std(train_inputs, axis=1)],
-    #                         axis=1)
-    # val_inputs = np.stack([np.max(val_inputs, axis=1), np.mean(val_inputs, axis=1), np.std(val_inputs, axis=1)],
-    #                       axis=1)
-
-    return train_inputs, val_inputs
-
-
-def make_buckets(x, num_buckets):
-    """Split features of x into num_buckets buckets.
-    Return list of arrays shape (num_buckets, bucket_size)."""
-    m, n = x.shape
-
-    bucketed_examples = []
-    for i in range(m):
-        buckets = []
-        n = np.max(np.nonzero(x[i]))
-        bucket_size = n // num_buckets + (1 if n % num_buckets > 0 else 0)
-        for j in range(0, n, bucket_size):
-            bucket = x[i, j: j + bucket_size]
-            buckets.append(np.pad(bucket, (0, bucket_size - bucket.shape[0]), mode='constant'))
-        bucketed_examples.append(np.stack(buckets))
-
-    return bucketed_examples
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--train_path', type=str,
-                        default='/pidg/chute/hsct/results/chute_xnet_split_3_cos_warmup_train/xgb/inputs.npy',
+                        default='/pidg/chute/hsct/results/chute_xnet_split_1_cos_warmup_train/xgb/inputs.npy',
                         help='Path to the file with training data.')
     parser.add_argument('--val_path', type=str,
-                        default='/pidg/chute/hsct/results/chute_xnet_split_3_cos_warmup_val/xgb/inputs.npy',
+                        default='/pidg/chute/hsct/results/chute_xnet_split_1_cos_warmup_val/xgb/inputs.npy',
                         help='Path to the file with val data.')
     parser.add_argument('--max_depth', type=int, default=3,
                         help='Maximum tree depth for XGBoost base learners.')

@@ -26,10 +26,10 @@ class BaseCAM(object):
     def forward(self, x):
         self.inputs = x.to(self.device)
         self.model.zero_grad()
-        self.preds = self.model(self.inputs, for_cams=True)
+        self.preds = self.model(self.inputs)
 
         if self.is_binary:
-            self.probs = torch.sigmoid(self.preds)[0]
+            self.probs = F.sigmoid(self.preds)[0]
         else:
             self.probs = F.softmax(self.preds, dim=1)[0]
         self.prob, self.idx = self.probs.sort(0, True)

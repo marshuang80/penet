@@ -60,11 +60,6 @@ class CTDataLoader(DataLoader):
 
         return output, target
 
-    def get_series(self, dset_path):
+    def get_series(self, study_num):
         """Get a series with given dset_path. Note: Slow function, avoid this in training."""
-        if not hasattr(self.dataset, 'series_list'):
-            raise ValueError('CTDataLoader\'s dataset does not have a series_list.')
-        for s in self.dataset.series_list:
-            if s.dset_path == dset_path:
-                return s
-        return None
+        return self.dataset.get_series(study_num)

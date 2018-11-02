@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import random
 import torch.nn as nn
 import torch.optim as optim
 
@@ -20,7 +19,7 @@ def get_loss_fn(is_classification, dataset, size_average=True):
         Differentiable criterion that can be applied to targets, logits.
     """
     if is_classification:
-        return BinaryFocalLoss(size_average=size_average)
+        return BinaryFocalLoss()
     elif dataset == 'KineticsDataset':
         return nn.CrossEntropyLoss()
     else:
@@ -44,8 +43,7 @@ def get_optimizer(parameters, args):
                               dampening=args.sgd_dampening)
     elif args.optimizer == 'adam':
         optimizer = optim.Adam(parameters, args.learning_rate,
-                               betas=(args.adam_beta_1, args.adam_beta_2),
-                               weight_decay=args.weight_decay)
+                               betas=(args.adam_beta_1, args.adam_beta_2), weight_decay=args.weight_decay)
     else:
         raise ValueError('Unsupported optimizer: {}'.format(args.optimizer))
 
@@ -67,22 +65,14 @@ def get_scheduler(optimizer, args):
     elif args.lr_scheduler == 'multi_step':
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.lr_milestones, gamma=args.lr_decay_gamma)
     elif args.lr_scheduler == 'plateau':
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                         mode='max' if args.maximize_metric else 'min',
-                                                         factor=args.lr_decay_gamma,
-                                                         patience=args.lr_patience)
-    elif args.lr_scheduler == 'cosine':
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer,
-                                                         T_max=args.lr_decay_step,
-                                                         eta_min=args.lr_decay_gamma * args.learning_rate)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=args.lr_decay_gamma, patience=args.patience)
     elif args.lr_scheduler == 'cosine_warmup':
-        lambda_fns = []
-        if args.use_pretrained:
-            # For pretrained params, delay the warmup to let randomly initialized head settle
-            lambda_fns.append(partial(linear_warmup_then_cosine, delay=args.lr_warmup_steps,
-                                      warmup=args.lr_warmup_steps, max_iter=args.lr_decay_step))
-        lambda_fns.append(partial(linear_warmup_then_cosine, warmup=args.lr_warmup_steps, max_iter=args.lr_decay_step))
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda_fns)
+        # If pretrained, delay for warmup steps to allow randomly initialized head to settle down
+        ft_lambda_fn = partial(linear_warmup_then_cosine, delay=args.lr_warmup_steps,
+                               warmup=args.lr_warmup_steps, max_iter=args.lr_decay_step)
+        reg_lambda_fn = partial(linear_warmup_then_cosine, warmup=args.lr_warmup_steps, max_iter=args.lr_decay_step)
+        lr_fns = [ft_lambda_fn, reg_lambda_fn] if args.use_pretrained else reg_lambda_fn
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_fns)
     else:
         raise ValueError('Invalid learning rate scheduler: {}.'.format(args.lr_scheduler))
 
@@ -106,13 +96,22 @@ def linear_warmup_then_cosine(last_iter, warmup, max_iter, delay=None):
 
 def step_scheduler(lr_scheduler, metrics=None, epoch=None, global_step=None, best_ckpt_metric='val_loss'):
     """Step a LR scheduler."""
-    if global_step is not None and isinstance(lr_scheduler, optim.lr_scheduler.LambdaLR):
-        lr_scheduler.step(global_step)
-    elif global_step is None and isinstance(lr_scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+    if isinstance(lr_scheduler, optim.lr_scheduler.ReduceLROnPlateau):
         if best_ckpt_metric in metrics:
             lr_scheduler.step(metrics[best_ckpt_metric], epoch=epoch)
-    elif global_step is None and not isinstance(lr_scheduler, optim.lr_scheduler.LambdaLR):
-        lr_scheduler.step(epoch=epoch)
+    elif isinstance(lr_scheduler, optim.lr_scheduler.LambdaLR):
+        # LambdaLR gets stepped once per iteration
+        if epoch is None:
+            lr_scheduler.step(global_step)
+    elif global_step is None:
+        lr_scheduler.step(epoch)
+
+
+def get_lr(optimizer):
+    lr = []
+    for param_group in optimizer.param_groups:
+        lr.append(param_group['lr'])
+    return lr
 
 
 def softmax(x, axis=0):
@@ -128,56 +127,21 @@ def softmax(x, axis=0):
 
 class HardExampleMiner(object):
 
-    def __init__(self, example_ids, init_loss=math.log(2), norm_method='standard'):
+    def __init__(self, example_ids, init_loss=0.69315):
         """Initialize HardExampleMiner to the uniform distribution.
 
         Args:
             example_ids: List of IDs for each example.
-            init_loss: Initial loss for each example.
-            norm_method: One of 'softmax' or 'standard'. Standard means divide by sum.
+            init_loss: Initial loss for each example (defaults to log(2)).
         """
         self.example_ids = example_ids[:]
-        self.losses = [init_loss] * self.num_examples()
+        self.losses = [init_loss] * len(self.example_ids)
+        self.probs = None
+        self._recompute_probs()
 
-        norm_options = ('standard', 'softmax')
-        if norm_method not in norm_options:
-            raise ValueError('Invalid normalization method: {} not in {}'.format(norm_method, norm_options))
-        self.norm_method = norm_method
-
-        self.sample_idxs = None
-        self.make_uniform()
-
-    def num_examples(self):
-        return len(self.example_ids)
-
-    def _resample_idxs(self):
-        """Re-sample indices by normalizing the losses according to `norm_method`, then sampling."""
-        probs = self._normalized(self.losses)
-        n = self.num_examples()
-        self.sample_idxs = list(reversed(np.random.choice(n, n, replace=False, p=probs).tolist()))
-
-    def _normalized(self, losses):
-        """Compute normalized list from losses.
-
-        Args:
-            losses: List of losses to normalize.
-
-        Returns:
-            Normalized variant of the list.
-        """
-        normalized_losses = None
-        if self.norm_method == 'softmax':
-            normalized_losses = softmax(np.array(losses)).tolist()
-        elif self.norm_method == 'standard':
-            total = sum(losses)
-            normalized_losses = [l / total for l in losses]
-
-        return normalized_losses
-
-    def make_uniform(self):
-        """Make the sample distribution uniform."""
-        self.sample_idxs = list(range(self.num_examples()))
-        random.shuffle(self.sample_idxs)
+    def _recompute_probs(self):
+        """Re-compute sample probabilities by taking softmax of losses."""
+        self.probs = softmax(np.array(self.losses)).tolist()
 
     def sample(self):
         """Sample an example according a probability distribution that
@@ -186,10 +150,7 @@ class HardExampleMiner(object):
         Returns:
             An example ID for an example drawn according to the probability distribution.
         """
-        if len(self.sample_idxs) == 0:
-            self._resample_idxs()
-
-        sampled_idx = self.sample_idxs.pop()
+        sampled_idx = np.random.choice(len(self.example_ids), p=self.probs)
         example_id = self.example_ids[sampled_idx]
 
         return example_id
@@ -212,4 +173,4 @@ class HardExampleMiner(object):
                 self.losses.append(loss)
 
         # Recompute probabilities from losses
-        self._resample_idxs()
+        self._recompute_probs()

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class DiceLoss(nn.Module):
@@ -37,6 +38,6 @@ class DiceLoss(nn.Module):
         return dice
 
     def forward(self, logits, targets):
-        probs = torch.sigmoid(logits)
+        probs = F.sigmoid(logits)
         loss = 1. - self._dice_coefficient(probs, targets)
         return loss
