@@ -45,7 +45,7 @@ def main(args):
                 if slice_thickness in args.use_thicknesses:
                     # Add to list of studies
                     study_paths.append(os.path.join(base_path, name))
-                    pe_slice_nums = name2slices.get(name, [])
+                    pe_slice_nums = name2slices.get(study_num, [])
                     thicc, label, phase, dataset = name2info[study_num]
                     print (thicc, label, phase, len(pe_slice_nums))
                     if thicc != slice_thickness:

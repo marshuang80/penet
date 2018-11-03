@@ -47,7 +47,6 @@ class CTPEDataset3d(BaseCTDataset):
         with open(args.pkl_path, 'rb') as pkl_file:
             all_ctpes = pickle.load(pkl_file)
         self.ctpe_list = [ctpe for ctpe in all_ctpes if self._include_ctpe(ctpe)]
-
         self.positive_idxs = [i for i in range(len(self.ctpe_list)) if self.ctpe_list[i].is_positive]
         self.min_pe_slices = args.min_abnormal_slices
         self.num_slices = args.num_slices
@@ -80,7 +79,7 @@ class CTPEDataset3d(BaseCTDataset):
         """Predicate for whether to include a series in this dataset."""
         if pe.phase != self.phase and self.phase != 'all':
             return False
-
+        
         if pe.is_positive and pe.type not in self.pe_types:
             return False
 
