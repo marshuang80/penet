@@ -9,7 +9,7 @@ class CTPE(object):
         self.num_slices = len(pe_slice_nums)
         self.pe_idxs = [n - 1 for n in pe_slice_nums]
         self.phase = phase
-	self.type = dataset
+        self.type = dataset
 
     def __len__(self):
         return self.num_slices
