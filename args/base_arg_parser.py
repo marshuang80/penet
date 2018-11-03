@@ -50,7 +50,7 @@ class BaseArgParser(object):
         self.parser.add_argument('--num_workers', default=8, type=int, help='Number of threads for the DataLoader.')
         self.parser.add_argument('--agg_method', type=str, default='', choices=('max', 'mean', 'logreg', ''),
                                  help='Method for aggregating window-level predictions to a single prediction.')
-        self.parser.add_argument('--save_dir', type=str, default='ckpts/',
+        self.parser.add_argument('--save_dir', type=str, default='../ckpts/',
                                  help='Directory in which to save model checkpoints.')
         self.parser.add_argument('--use_contrast', type=util.str_to_bool, default=True,
                                  help='Use contrast studies (CT head datasets only).')
