@@ -25,8 +25,8 @@ def main(args):
         info, slices = slice_line.split(':')
         slices = slices.strip()
         info = info.split(',')
-        studynum, thicc, label, phase, dataset = int(info[0]), float(info[1]), int(info[2]), info[3], info[4]
-        name2info[studynum] = [thicc, label, phase, dataset]
+        studynum, thicc, label, num_slices, phase, dataset = int(info[0]), float(info[1]), int(info[2]), int(info[3]), info[4], info[5]
+        name2info[studynum] = [thicc, label, num_slices, phase, dataset]
         if slices: 
             name2slices[studynum] = [int(n) for n in slices.split(',')]
         else:
@@ -46,11 +46,11 @@ def main(args):
                     # Add to list of studies
                     study_paths.append(os.path.join(base_path, name))
                     pe_slice_nums = name2slices.get(study_num, [])
-                    thicc, label, phase, dataset = name2info[study_num]
-                    print (thicc, label, phase, len(pe_slice_nums))
+                    thicc, label, num_slices, phase, dataset = name2info[study_num]
+                    print (thicc, label, phase, num_slices)
                     if thicc != slice_thickness:
                         print ('Thickness issue with file', name)
-                    ctpes.append(CTPE(study_num, slice_thickness, pe_slice_nums, dataset, is_positive=label, phase=phase))
+                    ctpes.append(CTPE(study_num, slice_thickness, pe_slice_nums, num_slices, dataset, is_positive=label, phase=phase))
 
     with open(os.path.join(args.output_dir, 'series_list.pkl'), 'wb') as pkl_fh:
         pickle.dump(ctpes, pkl_fh)
@@ -75,7 +75,7 @@ if __name__ == '__main__':
                         default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/data-final/images',
                         help='Base directory for loading 3D volumes.')
     parser.add_argument('--slice_list', type=str,
-                        default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_10_21/slice_list_11_2.txt')
+                        default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_10_21/slice_list_11_3.txt')
     parser.add_argument('--use_thicknesses', default='1.25', type=str,
                         help='Comma-separated list of thicknesses to use.')
     parser.add_argument('--hu_intercept', type=float, default=-1024,
