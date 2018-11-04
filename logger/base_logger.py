@@ -129,7 +129,9 @@ class BaseLogger(object):
             tag = '{}/{}/{}_{}_{:.4f}'.format(phase, title, label, targets_dict['dset_path'][i], cls_probs[i][0])
             if unique_id is not None:
                 tag += '_{}'.format(unique_id)
-
+            
+            # Reshaping to B, C, T, H, W
+            visuals_np = visuals_np.reshape(1, visuals_np.shape[3], visuals_np.shape[0], visuals_np.shape[1], visuals_np.shape[2])
             if is_3d:
                 self.summary_writer.add_video(tag, visuals_np, self.global_step)
             else:
