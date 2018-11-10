@@ -63,6 +63,9 @@ class CTPEDataset3d(BaseCTDataset):
             self.series_to_window_idx.append(window_start)
             window_start += num_windows
 
+        if args.toy:
+            self.window_to_series_idx = np.random.choice(self.window_to_series_idx, args.toy_size, replace=False)
+
         if self.use_hem:
             # Initialize a HardExampleMiner with IDs formatted like (series_idx, start_idx)
             example_ids = []

@@ -77,7 +77,7 @@ class BaseLogger(object):
             fig.canvas.draw()
 
             curve_img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-            curve_img = curve_img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+            curve_img = curve_img.reshape((3,) + fig.canvas.get_width_height()[::-1])
             self.summary_writer.add_image(name.replace('_', '/'), curve_img, global_step=self.global_step)
 
     def visualize(self, inputs, cls_logits, targets_dict, phase, unique_id=None):
@@ -110,7 +110,6 @@ class BaseLogger(object):
                 break
 
             input_np = util.un_normalize(inputs[i], self.img_format, self.pixel_dict)
-            input_np = np.transpose(input_np, (1, 2, 3, 0) if is_3d else (1, 2, 0))
             input_np = input_np.astype(np.float32) / 255.
 
             mask_np = None
@@ -131,7 +130,7 @@ class BaseLogger(object):
                 tag += '_{}'.format(unique_id)
             
             # Reshaping to B, C, T, H, W
-            visuals_np = visuals_np.reshape(1, visuals_np.shape[3], visuals_np.shape[0], visuals_np.shape[1], visuals_np.shape[2])
+            visuals_np = np.expand_dims(visuals_np, 0)
             if is_3d:
                 self.summary_writer.add_video(tag, visuals_np, self.global_step)
             else:
