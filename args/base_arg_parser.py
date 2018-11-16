@@ -68,7 +68,7 @@ class BaseArgParser(object):
                                  help='Dataset to use. Gets mapped to CTHeadDataset3d or CTSpineDataset3d.')
         self.parser.add_argument('--deterministic', type=util.str_to_bool, default=False,
                                  help='If true, set a random seed to get deterministic results.')
-        self.parser.add_argument('--cudnn_benchmark', type=util.str_to_bool, default=True,
+        self.parser.add_argument('--cudnn_benchmark', type=util.str_to_bool, default=False,
                                  help='Set cudnn benchmark to save fastest computation algorithm for fixed size inputs. \
                                        Turn off when input size is variable.')
         self.parser.add_argument('--hide_probability', type=float, default=0.0,
@@ -170,17 +170,14 @@ class BaseArgParser(object):
             if args.model_depth not in (4, 5, 6, 7, 8):
                 raise ValueError('Invalid model depth for UNet: {}'.format(args.model_depth))
             args.loader = 'slice'
-            args.dataset = 'CTHeadDataset2d'
         elif args.model == 'VNet':
             if args.model_depth not in (4, 5, 6, 7, 8):
                 raise ValueError('Invalid model depth for VNet: {}'.format(args.model_depth))
             args.loader = 'window'
-            args.dataset = 'CTHeadDataset3d'
         elif args.model == 'XNet':
             if args.model_depth != 50:
                 raise ValueError('Invalid model depth for XNet: {}'.format(args.model_depth))
             args.loader = 'window'
-            args.dataset = 'CTHeadDataset3d'
         elif args.model == 'XNetClassifier':
             if args.model_depth != 50:
                 raise ValueError('Invalid model depth for XNet: {}'.format(args.model_depth))
