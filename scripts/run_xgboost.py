@@ -115,10 +115,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--train_path', type=str,
-                        default='/pidg/chute/hsct/results/chute_xnet_split_1_cos_warmup_train/xgb/inputs.npy',
+                        default='/sailhome/tanay/results_train/dirty5kin/final_tests_20181210_150457/xgb/inputs.npy',
                         help='Path to the file with training data.')
     parser.add_argument('--val_path', type=str,
-                        default='/pidg/chute/hsct/results/chute_xnet_split_1_cos_warmup_val/xgb/inputs.npy',
+                        default='/sailhome/tanay/results/dirty5kin/final_tests_20181209_014003/xgb/inputs.npy',
                         help='Path to the file with val data.')
     parser.add_argument('--max_depth', type=int, default=3,
                         help='Maximum tree depth for XGBoost base learners.')
@@ -150,7 +150,7 @@ if __name__ == '__main__':
                         help='If true, overwrite and retrain the model with the same experiment name.')
     parser.add_argument('--name', type=str, required=True,
                         help='Filename of stored xgb model to be stored/loaded.')
-    parser.add_argument('--model_dir', type=str, default='classifier/',
+    parser.add_argument('--model_dir', type=str, default='/sailhome/tanay/results_train/dirty5kin/xgb_classifier/',
                         help='Directory to save model and results.')
     parser.add_argument('--run_classifier', type=util.str_to_bool,
                         help='Run a trained classifier and get metrics.')

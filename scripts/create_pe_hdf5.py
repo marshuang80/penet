@@ -75,13 +75,13 @@ if __name__ == '__main__':
                         default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/data-final/images',
                         help='Base directory for loading 3D volumes.')
     parser.add_argument('--slice_list', type=str,
-                        default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_11_4/slice_list_11_4.txt')
+                        default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_12_4_clean/slice_list_12_4_clean.txt')
     parser.add_argument('--use_thicknesses', default='1.25', type=str,
                         help='Comma-separated list of thicknesses to use.')
     parser.add_argument('--hu_intercept', type=float, default=-1024,
                         help='Intercept for converting from original numpy files to HDF5 (probably -1024).')
     parser.add_argument('--output_dir', type=str,
-                        default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_11_4',
+                        default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_12_4_clean',
                         help='Output directory for HDF5 file and pickle file.')
 
     args_ = parser.parse_args()

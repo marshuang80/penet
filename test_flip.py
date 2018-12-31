@@ -40,20 +40,29 @@ def test(args):
                 cls_logits = model.forward(inputs.to(args.device))
                 cls_probs = F.sigmoid(cls_logits)
 
+                h_inputs = np.flip(inputs.to('cpu').numpy(), axis=-1).copy()  
+                h_inputs = torch.from_numpy(h_inputs)
+                
+                cls_h_logits = model.forward(h_inputs.to(args.device))
+                cls_h_probs = F.sigmoid(cls_h_logits)
+                
             if args.visualize_all:
                 logger.visualize(inputs, cls_logits, targets_dict=None, phase=args.phase, unique_id=i)
 
             # TODO: Choose threshold and set masks to zero if cls_probs < threshold
             max_probs = cls_probs.to('cpu').numpy()
-            for study_num, slice_idx, prob in \
-                    zip(targets_dict['study_num'], targets_dict['slice_idx'], list(max_probs)):
+            max_h_probs = cls_h_probs.to('cpu').numpy()
+            for study_num, slice_idx, prob, prob_h in \
+                    zip(targets_dict['study_num'], targets_dict['slice_idx'], list(max_probs), list(max_h_probs)):
                 # Convert to standard python data types
                 study_num = int(study_num)
                 slice_idx = int(slice_idx)
 
+                p = max(prob.item(), prob_h.item())
+
                 # Save series num for aggregation
                 study2slices[study_num].append(slice_idx)
-                study2probs[study_num].append(prob.item())
+                study2probs[study_num].append(p)
 
                 series = data_loader.get_series(study_num)
                 if study_num not in study2labels:
