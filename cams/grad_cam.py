@@ -51,9 +51,14 @@ class GradCAM(BaseCAM):
         weights = self._compute_grad_weights(grads)
 
         gcam = (fmaps[0] * weights[0]).sum(dim=0)
-        gcam = torch.clamp(gcam, min=0, max=float('inf'))
+
+        # TODO
+        #gcam = torch.clamp(gcam, min=0, max=float('inf'))
+
 
         gcam -= gcam.min()
         gcam /= gcam.max()
+
+        #print(gcam)
 
         return gcam.detach().to('cpu').numpy()

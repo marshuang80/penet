@@ -1,10 +1,11 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import SimpleITK as sitk
+#import SimpleITK as sitk
 import scipy.ndimage.interpolation as interpolation
 
 from scipy import interpolate
+#import sklearn.metrics as metrics, average_precision_score
 
 
 def apply_window(img, w_center, w_width):
@@ -517,10 +518,12 @@ def get_plot(title, curve):
         ax.set_ylabel('Precision')
     elif plot_type == 'ROC':
         false_positive_rate, true_positive_rate, _ = curve
+        #roc_auc = metrics.auc(fpr, tpr)
         ax.plot(false_positive_rate, true_positive_rate, color='b')
         ax.plot([0, 1], [0, 1], 'r--')
         ax.set_xlabel('False Positive Rate')
         ax.set_ylabel('True Positive Rate')
+        ax.legend(loc = 'lower right')
     else:
         ax.plot(curve[0], curve[1], color='b')
 

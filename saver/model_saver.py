@@ -35,7 +35,7 @@ class ModelSaver(object):
                 or (self.maximize_metric and self.best_metric_val < metric_val)
                 or (not self.maximize_metric and self.best_metric_val > metric_val))
 
-    def save(self, epoch, model, optimizer, lr_scheduler, device, metric_val):
+    def save(self, epoch, model, optimizer, lr_scheduler=None, device=None, metric_val=None):
         """If this epoch corresponds to a save epoch, save model parameters to disk.
 
         Args:
@@ -49,14 +49,23 @@ class ModelSaver(object):
         if epoch % self.epochs_per_save != 0:
             return
 
-        ckpt_dict = {
-            'ckpt_info': {'epoch': epoch, self.metric_name: metric_val},
-            'model_name': model.module.__class__.__name__,
-            'model_args': model.module.args_dict(),
-            'model_state': model.to('cpu').state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'lr_scheduler': lr_scheduler.state_dict()
-        }
+        if lr_scheduler is None:
+            ckpt_dict = {
+                'ckpt_info': {'epoch': epoch, self.metric_name: metric_val},
+                'model_name': model.__class__.__name__,
+                'model_state': model.to('cpu').state_dict(),
+                'optimizer': optimizer.state_dict(),
+            }
+
+        else:
+            ckpt_dict = {
+                'ckpt_info': {'epoch': epoch, self.metric_name: metric_val},
+                'model_name': model.module.__class__.__name__,
+                'model_args': model.module.args_dict(),
+                'model_state': model.to('cpu').state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict()
+            }
         model.to(device)
 
         ckpt_path = os.path.join(self.save_dir, 'epoch_{}.pth.tar'.format(epoch))

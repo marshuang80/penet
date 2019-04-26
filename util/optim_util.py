@@ -19,24 +19,24 @@ def get_loss_fn(is_classification, dataset, size_average=True):
         Differentiable criterion that can be applied to targets, logits.
     """
     if is_classification:
-        return BinaryFocalLoss()
-    elif dataset == 'KineticsDataset':
-        return nn.CrossEntropyLoss()
-    else:
-        return HybridLoss(nn.BCEWithLogitsLoss, DiceLoss, alpha=0.05, beta=0.95, ignore_zero_labels=True)
+            return BinaryFocalLoss()
+        elif dataset == 'KineticsDataset':
+            return nn.CrossEntropyLoss()
+        else:
+            return HybridLoss(nn.BCEWithLogitsLoss, DiceLoss, alpha=0.05, beta=0.95, ignore_zero_labels=True)
 
 
-def get_optimizer(parameters, args):
-    """Get a PyTorch optimizer for params.
+    def get_optimizer(parameters, args):
+        """Get a PyTorch optimizer for params.
 
-    Args:
-        parameters: Iterator of network parameters to optimize (i.e., model.parameters()).
-        args: Command line arguments.
+        Args:
+            parameters: Iterator of network parameters to optimize (i.e., model.parameters()).
+            args: Command line arguments.
 
-    Returns:
-        PyTorch optimizer specified by args_.
-    """
-    if args.optimizer == 'sgd':
+        Returns:
+            PyTorch optimizer specified by args_.
+        """
+        if args.optimizer == 'sgd':
         optimizer = optim.SGD(parameters, args.learning_rate,
                               momentum=args.sgd_momentum,
                               weight_decay=args.weight_decay,

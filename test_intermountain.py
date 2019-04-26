@@ -27,18 +27,22 @@ def test(args):
     model.eval()
     print ("Stage 4")
     data_loader = CTDataLoader(args, phase=args.phase, is_training=False)
+    print(data_loader.dataset.ctpe_list)
     study2slices = defaultdict(list)
     study2probs = defaultdict(list)
     study2labels = {}
     logger = TestLogger(args, len(data_loader.dataset), data_loader.dataset.pixel_dict)
-
+    
+    minimum = []
     means = []
+    maximum = []
+    data = []
 
     # Get model outputs, log to TensorBoard, write masks to disk window-by-window
     util.print_err('Writing model outputs to {}...'.format(args.results_dir))
     with tqdm(total=len(data_loader.dataset), unit=' windows') as progress_bar:
         for i, (inputs, targets_dict) in enumerate(data_loader):
-            means.append(inputs.mean().data[0])
+
             with torch.no_grad():
                 cls_logits = model.forward(inputs.to(args.device))
                 cls_probs = F.sigmoid(cls_logits)
@@ -63,16 +67,14 @@ def test(args):
                     study2labels[study_num] = int(series.is_positive)
 
             progress_bar.update(inputs.size(0))
-    
-    print("Data mean average: ", np.array(means).mean())
-    print("Data mean max: " , np.array(means).max())
-    print("Data mean min: ", np.array(means).min())
+
     # Combine masks
     util.print_err('Combining masks...')
     max_probs = []
     labels = []
+    study_nums = []
     predictions = {}
-    print("Get max probability")
+    print("Get max prob")
     for study_num in tqdm(study2slices):
 
         # Sort by slice index and get max probability
@@ -84,27 +86,70 @@ def test(args):
         max_probs.append(max_prob)
         label = study2labels[study_num]
         labels.append(label)
+        study_nums.append(study_num)
         predictions[study_num] = {'label':label, 'pred':max_prob}
 
     #Save predictions to file, indexed by study number
-    print("Save to pickle")
+    print("Saving predictions to pickle files")
     with open('{}/preds.pickle'.format(args.results_dir),"wb") as fp:
         pickle.dump(predictions,fp)
         
     # Write features for XGBoost
-    save_for_xgb(args.results_dir, study2probs, study2labels)
+    #save_for_xgb(args.results_dir, study2probs, study2labels)
     # Write the slice indices used for the features
-    print("Write slice indices")
-    with open(os.path.join(args.results_dir, 'xgb', 'series2slices.json'), 'w') as json_fh:
-        json.dump(study2slices, json_fh, sort_keys=True, indent=4)
+    #with open(os.path.join(args.results_dir, 'xgb', 'series2slices.json'), 'w') as json_fh:
+    #    json.dump(study2slices, json_fh, sort_keys=True, indent=4)
 
     # Compute AUROC and AUPRC using max aggregation, write to files
     max_probs, labels = np.array(max_probs), np.array(labels)
+    #print(max_probs, labels)
+    #for p,l in zip(max_probs, labels):
+    #    print(p,l)
+    # TODO pick optimal threshold
+    import pandas as pd
+    from sklearn.metrics import roc_curve
+    fpr, tpr, threshold = roc_curve(labels, max_probs)
+    i = np.arange(len(tpr)) 
+    roc = pd.DataFrame({'tf' : pd.Series(tpr-(1-fpr), index=i), 'threshold' : pd.Series(threshold, index=i)})
+    roc_t = roc.ix[(roc.tf-0).abs().argsort()[:1]]
+
+    #threshold = list(roc_t['threshold'])[0]
+    threshold = 0.7
+    # TODO make confusion matrix
+    from sklearn.metrics import confusion_matrix
+    pred = [1 if p >threshold else 0 for p in max_probs]
+
+    tn, fp, fn, tp = confusion_matrix(labels, pred).ravel()
+
+
+    print("\nTrue Positive Examples\n" + "-"*80)
+    for i, study_num in enumerate(study_nums):
+        if labels[i] == 1 and pred[i] == 1: print(study_num)
+    print("\nTrue Negative Examples\n" + "-"*80)
+    for i, study_num in enumerate(study_nums):
+        if labels[i] == 0 and pred[i] == 0: print(study_num)
+    print("\nFalse Negative Examples\n" + "-"*80)
+    for i, study_num in enumerate(study_nums):
+        if labels[i] == 1 and pred[i] == 0: print(study_num)
+    print("\nFalse Positive Examples\n" + "-"*80)
+    for i, study_num in enumerate(study_nums):
+        if labels[i] == 0 and pred[i] == 1: print(study_num)
+
+    print("Total number of data :", len(labels))
+    print("Total number of positives :", len([l for l in labels if l == 1]))
+    print("Total number of negatives :", len([l for l in labels if l == 0]))
+    print("# True Negative : ", tn)
+    print("# True Positive : ", tp)
+    print("# False Negative : ", fn)
+    print("# False Positive : ", fp)
+
     metrics = {
         args.phase + '_' + 'AUPRC': sk_metrics.average_precision_score(labels, max_probs),
         args.phase + '_' + 'AUROC': sk_metrics.roc_auc_score(labels, max_probs),
     }
-    print("Write metrics")
+    for k, v in metrics.items():
+        print('{}: {:.5f}\n'.format(k, v))
+    print("Saving metrics to file")
     with open(os.path.join(args.results_dir, 'metrics.txt'), 'w') as metrics_fh:
         for k, v in metrics.items():
             metrics_fh.write('{}: {:.5f}\n'.format(k, v))
@@ -113,6 +158,10 @@ def test(args):
         args.phase + '_' + 'PRC': sk_metrics.precision_recall_curve(labels, max_probs),
         args.phase + '_' + 'ROC': sk_metrics.roc_curve(labels, max_probs)
     }
+
+    roc = sk_metrics.roc_curve(labels, max_probs)
+    with open("intermountain_subseg_roc.pkl", 'wb') as f:
+        pickle.dump(roc, f)
     for name, curve in curves.items():
         curve_np = util.get_plot(name, curve)
         curve_img = Image.fromarray(curve_np)

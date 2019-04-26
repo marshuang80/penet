@@ -25,6 +25,7 @@ class CTPEDataset3d(BaseCTDataset):
         self.resize_shape = args.resize_shape
         self.is_test_mode = not args.is_training
         self.pe_types = args.pe_types
+        self.meta_features = args.features.split(",")
 
         # Augmentation
         self.crop_shape = args.crop_shape
@@ -46,7 +47,11 @@ class CTPEDataset3d(BaseCTDataset):
         # Load info for the CTPE series in this dataset
         with open(args.pkl_path, 'rb') as pkl_file:
             all_ctpes = pickle.load(pkl_file)
+
+        # TODO 
         self.ctpe_list = [ctpe for ctpe in all_ctpes if self._include_ctpe(ctpe)]
+        #self.ctpe_list = [ctpe for ctpe in all_ctpes]
+
         self.positive_idxs = [i for i in range(len(self.ctpe_list)) if self.ctpe_list[i].is_positive]
         self.min_pe_slices = args.min_abnormal_slices
         self.num_slices = args.num_slices
@@ -88,6 +93,38 @@ class CTPEDataset3d(BaseCTDataset):
 
         return True
 
+    def _parse_metadata(self, ctpe):
+
+        race_dict = {'Asian':0,
+                'Black':1,
+                'Native American':2,
+                'Other':3,
+                'Pacific Islander':4,
+                'Unknown':5,
+                'White':6}
+
+
+        age = [ctpe.age / 100.0]
+        try:
+            sex = [1] if ctpe.sex == "Male" else [0]
+        except:
+            print(ctpe.sex)
+        is_smoker = [1] if ctpe.is_smoker == "Y" else [0]
+        race_raw = ctpe.race 
+        race = [0] * 7
+        race[race_dict[race_raw]] = 1
+        
+        meta_dict = {"age":age,
+                     "is_smoker": is_smoker,
+                     "race": race,
+                     "sex", sex}
+
+        meta = []
+        for feature in self.meta_features:
+            meta += feature
+
+        return np.array(meta)
+
     def __len__(self):
         return len(self.window_to_series_idx)
 
@@ -108,6 +145,7 @@ class CTPEDataset3d(BaseCTDataset):
             ctpe = self.ctpe_list[ctpe_idx]
         else:
             # Get sequential windows through the whole series
+            # TODO
             start_idx = (idx - self.series_to_window_idx[ctpe_idx]) * self.num_slices
 
         if self.do_jitter:
@@ -120,6 +158,19 @@ class CTPEDataset3d(BaseCTDataset):
 
         is_abnormal = torch.tensor([self._is_abnormal(ctpe, start_idx)], dtype=torch.float32)
 
+        # TODO 
+
+        meta = self._parse_metadata(ctpe)
+
+        meta = torch.from_numpy(meta)
+
+        # metadata dictionary
+        meta_dict = {"age": age,
+                "is_smoker": is_smoker,
+                "race":race, 
+                "sex": sex
+                }
+
         # Pass series info to combine window-level predictions
         target = {'is_abnormal': is_abnormal,
                   'study_num': ctpe.study_num,
@@ -127,7 +178,8 @@ class CTPEDataset3d(BaseCTDataset):
                   'slice_idx': start_idx,
                   'series_idx': ctpe_idx}
 
-        return volume, target
+        return volume, target, meta
+        #return volume, target
 
     def get_series_label(self, series_idx):
         """Get a floating point label for a series at given index."""

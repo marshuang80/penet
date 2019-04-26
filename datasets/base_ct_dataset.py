@@ -96,8 +96,18 @@ class BaseCTDataset(Dataset):
             NumPy ndarray with normalized pixels in [-1, 1]. Same shape as input.
         """
             
+        #print(pixels.min(), pixels.max())
+        # TODO normalize to range 
+        #pixels = np.interp(pixels, (pixels.min(), pixels.max()), (-3024, 3071))
+
+
         pixels = pixels.astype(np.float32)
+
+
         pixels = (pixels - self.pixel_dict['min_val']) / (self.pixel_dict['max_val'] - self.pixel_dict['min_val'])
+        #print(pixels.min(), pixels.max())
+
+
         pixels = np.clip(pixels, 0., 1.) - self.pixel_dict['avg_val']
 
         return pixels

@@ -8,7 +8,7 @@ class TrainArgParser(BaseArgParser):
     def __init__(self):
         super(TrainArgParser, self).__init__()
         self.is_training = True
-
+        self.parser.add_argument('-f','--features', type=str, help='comma seperated features in [age, race, is_smoker, sex]', required=True)
         self.parser.add_argument('--epochs_per_save', type=int, default=5,
                                  help='Number of epochs between saving a checkpoint to save_dir.')
         self.parser.add_argument('--iters_per_print', type=int, default=4,

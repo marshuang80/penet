@@ -17,7 +17,7 @@ def args_to_list(csv, allow_empty, arg_type=int, allow_negative=True):
 
 def print_err(*args, **kwargs):
     """Print a message to stderr."""
-    print(*args, file=stderr, **kwargs)
+    #print(*args, file=stderr, **kwargs)
 
 
 def read_dicom(dicom_path):
