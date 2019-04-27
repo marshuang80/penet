@@ -117,11 +117,11 @@ class CTPEDataset3d(BaseCTDataset):
         meta_dict = {"age":age,
                      "is_smoker": is_smoker,
                      "race": race,
-                     "sex", sex}
+                     "sex": sex}
 
         meta = []
         for feature in self.meta_features:
-            meta += feature
+            meta += meta_dict[feature]
 
         return np.array(meta)
 
@@ -162,14 +162,14 @@ class CTPEDataset3d(BaseCTDataset):
 
         meta = self._parse_metadata(ctpe)
 
-        meta = torch.from_numpy(meta)
+        meta = torch.from_numpy(meta).type(torch.float)
 
         # metadata dictionary
-        meta_dict = {"age": age,
-                "is_smoker": is_smoker,
-                "race":race, 
-                "sex": sex
-                }
+        #meta_dict = {"age": age,
+        #        "is_smoker": is_smoker,
+        #        "race":race, 
+        #        "sex": sex
+        #        }
 
         # Pass series info to combine window-level predictions
         target = {'is_abnormal': is_abnormal,

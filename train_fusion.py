@@ -29,6 +29,12 @@ def train(args):
         num_meta += num_dim
 
     model = models.FusionNet(args, num_meta)
+
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("Total Params: ", total_params)
+    print("Trainable Params: ", trainable_params)                                   
+
     #model = nn.DataParallel(model, args.gpu_ids)
     model = model.to(args.device)
     model.train()

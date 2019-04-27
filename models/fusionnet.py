@@ -8,18 +8,23 @@ class FusionNet(nn.Module):
     """ResNet model, adapted from TorchVision to allow cams."""
     def __init__(self, args, num_meta):
         super(FusionNet, self).__init__()
+
+        # load pretrained vision model
         model, ckpt_info = ModelSaver.load_model(args.ckpt_path, args.gpu_ids)
 
-        
-        #print(model)
-        # remove last layer
-        #model = torch.nn.Sequential(*(list(model.children())))
-        model.module.classifier = Identity()
 
-        # freeze model weighhs
+        # freeze weights
         for param in model.parameters():
-            param.require_gard = False
+            param.requires_grad = False
 
+        
+        # print number of trainable/frozen weights
+        #total_params = sum(p.numel() for p in model.parameters())
+        #trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        #print("Total Params: ", total_params)
+        #print("Trainable Params: ", trainable_params)
+
+        model.module.classifier = Identity()
         self.pretrained_model = model
         self.avg_pool = nn.AdaptiveAvgPool3d(1)
         self.classifier = nn.Linear(2048 + num_meta, 1)
