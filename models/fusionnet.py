@@ -27,7 +27,14 @@ class FusionNet(nn.Module):
         model.module.classifier = Identity()
         self.pretrained_model = model
         self.avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.batch_norm = nn.BatchNorm1d(2048 + num_meta)
         self.classifier = nn.Linear(2048 + num_meta, 1)
+        #self.classifier = nn.Sequential(nn.Linear(2048 + num_meta, 512),
+		#							    nn.Linear(512, 512),
+		#							    nn.Linear(512, 1))
+
+
+
         self.classifier.is_output_head = True
 
 
@@ -42,6 +49,7 @@ class FusionNet(nn.Module):
 
         fused = torch.cat((x, meta), 1)
         fused = fused.view(fused.size(0), -1)
+        #fused = self.batch_norm(fused)
 
         pred = self.classifier(fused)
 
