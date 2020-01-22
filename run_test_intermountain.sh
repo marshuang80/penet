@@ -14,7 +14,7 @@ python ./test_intermountain.py --phase test \
                                --ckpt_path /data4/PE_stanford/ckpts/best.pth.tar \
                                --name stanford \
                                --dataset pe \
-                               --data_dir /data4/PE_stanford \
+                               --data_dir /data4/intermountain2/CTPA_FINAL \
                                --gpu_ids 0
 
 #python ./count.py --phase test --results_dir ../results --ckpt_path /mnt/bbq/PE_stanford/ckpts/best.pth.tar --name stanford --dataset pe --data_dir /mnt/bbq/PE_stanford --gpu_ids 0

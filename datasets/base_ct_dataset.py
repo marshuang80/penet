@@ -105,8 +105,6 @@ class BaseCTDataset(Dataset):
 
 
         pixels = (pixels - self.pixel_dict['min_val']) / (self.pixel_dict['max_val'] - self.pixel_dict['min_val'])
-        #print(pixels.min(), pixels.max())
-
 
         pixels = np.clip(pixels, 0., 1.) - self.pixel_dict['avg_val']
 

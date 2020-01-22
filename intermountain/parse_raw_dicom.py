@@ -100,6 +100,7 @@ def main(args):
         
         # create np array of slices and save to output_dir/images directory
         npy_volume = np.array([dcm.pixel_array for dcm in dcm_slices_sorted])
+        print(npy_volume.shape)
         
         # TODO normalize data to range -3024, 3071
         #npy_volume = np.interp(npy_volume, (npy_volume.min(), npy_volume.max()), (-3024, 3071))

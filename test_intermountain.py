@@ -93,6 +93,9 @@ def test(args):
     print("Saving predictions to pickle files")
     with open('{}/preds.pickle'.format(args.results_dir),"wb") as fp:
         pickle.dump(predictions,fp)
+
+    print(predictions.keys()) 
+    print(predictions[1770659])
         
     # Write features for XGBoost
     #save_for_xgb(args.results_dir, study2probs, study2labels)

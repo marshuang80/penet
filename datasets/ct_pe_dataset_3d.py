@@ -25,7 +25,7 @@ class CTPEDataset3d(BaseCTDataset):
         self.resize_shape = args.resize_shape
         self.is_test_mode = not args.is_training
         self.pe_types = args.pe_types
-        self.meta_features = args.features.split(",")
+        #self.meta_features = args.features.split(",")
 
         # Augmentation
         self.crop_shape = args.crop_shape
@@ -160,9 +160,9 @@ class CTPEDataset3d(BaseCTDataset):
 
         # TODO 
 
-        meta = self._parse_metadata(ctpe)
+        #meta = self._parse_metadata(ctpe)
 
-        meta = torch.from_numpy(meta).type(torch.float)
+        #meta = torch.from_numpy(meta).type(torch.float)
 
         # metadata dictionary
         #meta_dict = {"age": age,
@@ -178,7 +178,7 @@ class CTPEDataset3d(BaseCTDataset):
                   'slice_idx': start_idx,
                   'series_idx': ctpe_idx}
 
-        return volume, target, meta
+        return volume, target#, meta
         #return volume, target
 
     def get_series_label(self, series_idx):

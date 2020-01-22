@@ -5,4 +5,4 @@ from .vnet import VNet
 from .xnet import XNet
 from .xnet_classifier import XNetClassifier
 from .resnet import ResNet
-from .fusionnet import FusionNet
+#from .fusionnet import FusionNet
