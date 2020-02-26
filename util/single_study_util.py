@@ -43,19 +43,16 @@ def dicom_2_npy(input_study, series_description):
         return
         
     # sort slices
-    dcm_slices_sorted = sorted(dcm_slices, key=lambda dcm: int(dcm.InstanceNumber))
-
+    # test using image patient location instead
+    #dcm_slices_sorted = sorted(dcm_slices, key=lambda dcm: int(dcm.InstanceNumber))
+    dcm_slices_sorted = sorted(dcm_slices, key=lambda dcm: int(dcm.ImagePositionPatient[-1]))
     # save as npy_volume
     npy_volume = np.array([dcm.pixel_array for dcm in dcm_slices_sorted])
 
     # reverse volumne if patient position defer from standard 
-    if dcm.PatientPosition == "FFS":	
-        npy_volume = npy_volume[::-1]
- 
-    # TODO: normalize numpy?
-    #npy_volume = np.interp(npy_volume, (npy_volume.min(), npy_volume.max()), (-3024, 3071))
-    #npy_volume[npy_volume > 3071] = 3071
-    #npy_volume[npy_volume < -3024] = -3024
+    # test using image patient location instead
+    #if dcm.PatientPosition == "FFS":	
+    #    npy_volume = npy_volume[::-1]
 
     return npy_volume
 
