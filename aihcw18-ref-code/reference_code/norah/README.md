@@ -1,1 +1,0 @@
-# medical-imaging-starter-pack
