@@ -1,13 +1,13 @@
 # PENet 
-This repository contains the model (PENet) described in the paper *"PENet: A Scalable Deep-learning model for Automated Diagnosis of Pulmonary Embolism Using Volumetric CT Scan"* published on Nature Digital Medicine. 
+This repository contains the model (PENet) described in the paper *"PENet: A Scalable Deep-learning model for Automated Diagnosis of Pulmonary Embolism Using Volumetric CT Scan"* published on Nature Digital Medicine. [manuscript link](https://www-nature-com.stanford.idm.oclc.org/articles/s41746-020-0266-y) 
 
-### Table of Contents
+## Table of Contents
 0. [Introduction](#introduction)
 0. [Citation](#citation)
 0. [Results](#results)
 0. [Usage](#usage)
 
-### Introduction
+## Introduction
 
 Pulmonary Embolism (PE) is responsible for 180,000 deaths per year in the US alone. The gold standard diagnostic modality for PE is computed tomography pulmonary angiography (CTPA) which is interpreted by radiologists. Studies have shown that prompt diagnosis and treatment can greatly reduce morbidity and mortality, yet PE remains among the diagnoses most frequently missed or delayed due to lack of radiologist availability and physician fatigue. Therefore, there is an urgency in automating accurate interpretation and timely reporting of CTPA examinations to the immediate attention of physicians. 
 
@@ -19,7 +19,7 @@ Our model also highlights regions in the original CT scans that contributed most
 
 For more information please see the full manuscript at this [link](https://www-nature-com.stanford.idm.oclc.org/articles/s41746-020-0266-y).
 
-### Citation
+## Citation
 
 If you use these PENet in your research, please cite:
 
@@ -34,7 +34,7 @@ If you use these PENet in your research, please cite:
             publisher={Nature Publishing Group}
         }
 
-### Results
+## Results
 |                                    | Internal dataset: Stanford | External dataset: Intermountain |
 |------------------------------------|----------------------------|---------------------------------|
 | Metric (AUROC) [95% CI]            |                            |                                 |
@@ -46,7 +46,7 @@ If you use these PENet in your research, please cite:
 
 Our results demonstrate robust and interpretable diagnosis including sustained cross-institutional AUROC performance on an external dataset. PENet also outperforms the current state-of-the-art 3D CNN models by a wide margin. Thus, this work supports that successful application of deep learning to the diagnosis of a difficult radiologic finding such as PE on volumetric imaging in CTPA is possible, and can generalize on data from an external institution despite that the external institution. Ultimately, clinical integration may aid in prioritizing positive studies by sorting CTPA studies for timely diagnosis of this important disease including in settings where radiological expertise is limited.
 
-### Usage
+## Usage
 
 #### Environment Setup 
 1. Please install [Anaconda](https://docs.conda.io/en/latest/miniconda.html) in order to create a Python environment.
@@ -56,7 +56,7 @@ Our results demonstrate robust and interpretable diagnosis including sustained c
 
 #### Downlaod trained weights
 
-The checkpoints and weights for PENet is stored [here](https://stanfordmedicine.box.com/s/uql0ikebseltkkntiwl5rrn6zzuww6jt). 
+The checkpoints and weights for PENet are stored [here](https://stanfordmedicine.box.com/s/uql0ikebseltkkntiwl5rrn6zzuww6jt). 
 
 #### Training
 
