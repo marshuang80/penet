@@ -1,15 +1,15 @@
 import torch.nn as nn
 
-from models.layers.xnet.xnet_lateral import XNetLateral
+from models.layers.penet.penet_lateral import PENetLateral
 
 
-class XNetDecoder(nn.Module):
-    """Decoder (up-sampling layer) for XNet"""
+class PENetDecoder(nn.Module):
+    """Decoder (up-sampling layer) for PENet"""
     def __init__(self, skip_channels, in_channels, mid_channels, out_channels, kernel_size=4, stride=2):
-        super(XNetDecoder, self).__init__()
+        super(PENetDecoder, self).__init__()
 
         if skip_channels > 0:
-            self.lateral = XNetLateral(skip_channels, in_channels)
+            self.lateral = PENetLateral(skip_channels, in_channels)
 
         self.conv1 = nn.Conv3d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False)
         self.norm1 = nn.GroupNorm(mid_channels // 16, mid_channels)

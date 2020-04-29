@@ -102,11 +102,6 @@ def main(args):
         npy_volume = np.array([dcm.pixel_array for dcm in dcm_slices_sorted])
         print(npy_volume.shape)
         
-        # TODO normalize data to range -3024, 3071
-        #npy_volume = np.interp(npy_volume, (npy_volume.min(), npy_volume.max()), (-3024, 3071))
-        #npy_volume[npy_volume > 3071] = 3071
-        #npy_volume[npy_volume < -3024] = -3024
-
         try:
             npy_volume = npy_volume[int(start): int(end)+1]
         except:

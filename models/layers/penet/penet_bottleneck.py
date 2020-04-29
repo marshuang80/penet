@@ -1,11 +1,11 @@
 import random
 import torch.nn as nn
 
-from models.layers.xnet import SEBlock
+from models.layers.penet import SEBlock
 
 
-class XNetBottleneck(nn.Module):
-    """XNet bottleneck block, similar to a pre-activation ResNeXt bottleneck block.
+class PENetBottleneck(nn.Module):
+    """PENet bottleneck block, similar to a pre-activation ResNeXt bottleneck block.
 
     Based on the paper:
     "Aggregated Residual Transformations for Deep Nerual Networks"
@@ -16,16 +16,16 @@ class XNetBottleneck(nn.Module):
     expansion = 2
 
     def __init__(self, in_channels, channels, block_idx, total_blocks, cardinality=32, stride=1):
-        super(XNetBottleneck, self).__init__()
+        super(PENetBottleneck, self).__init__()
         mid_channels = cardinality * int(channels / cardinality)
         out_channels = channels * self.expansion
         self.survival_prob = self._get_survival_prob(block_idx, total_blocks)
 
         self.down_sample = None
-        if stride != 1 or in_channels != channels * XNetBottleneck.expansion:
+        if stride != 1 or in_channels != channels * PENetBottleneck.expansion:
             self.down_sample = nn.Sequential(
-                nn.Conv3d(in_channels, channels * XNetBottleneck.expansion, kernel_size=1, stride=stride, bias=False),
-                nn.GroupNorm(channels * XNetBottleneck.expansion // 16, channels * XNetBottleneck.expansion))
+                nn.Conv3d(in_channels, channels * PENetBottleneck.expansion, kernel_size=1, stride=stride, bias=False),
+                nn.GroupNorm(channels * PENetBottleneck.expansion // 16, channels * PENetBottleneck.expansion))
 
         self.conv1 = nn.Conv3d(in_channels, mid_channels, kernel_size=1, bias=False)
         self.norm1 = nn.GroupNorm(mid_channels // 16, mid_channels)

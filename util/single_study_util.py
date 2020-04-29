@@ -12,11 +12,6 @@ from ct.ct_pe_constants import W_CENTER_DEFAULT, W_WIDTH_DEFAULT, CONTRAST_HU_ME
 
 def dicom_2_npy(input_study, series_description): 
     dcm_slices = []
-    # TODO: 
-    # study_name =
-    # subsegmental = 
-    # start = 
-    # end = 
 
     # get all dicom files in path
     files = glob.glob(os.path.join(input_study,"*dcm"))

@@ -17,15 +17,10 @@ def main(args):
     study_paths = []
     ctpes = []
     
-    # TODO read in csv
     df = pd.read_csv(args.csv_path)
     
     acc = set(df.ACCESSION_NO)
     df.set_index("ACCESSION_NO", inplace=True)
-
-
-    #num_positive = 0
-    #num_negative = 0
 
     # Read slice-wise labels
     with open(args.slice_list, 'r') as slice_fh:
@@ -46,18 +41,6 @@ def main(args):
         if phase != "test": 
             #print(phase)
             continue
-        #if dataset != "central":
-            #print("CENTRAL")
-            #continue
-
-        #TODO filter out subseg
-
-        #if (df.loc[int(studynum)].SUBSEGMENTAL == 1 and df.loc[int(studynum)].POSITIVE_CTPA == 1) or int(studynum) in [1725465, 1990158, 2178280]:
-            #print(studynum)
-            #continue
-
-        if (int(studynum) in [1725465, 1990158, 2178280, 2723621,2539770,1714879, 1714887, 1716610,1717870, 1722054, 1722949, 1727117, 1731412, 1731704, 1735808, 1735973, 1736262, 1741715, 1742266,1742356, 1743808]): continue
-        """
 
         if int(studynum) in acc:
             if df.loc[int(studynum)]["subsegmental_only"] == 1: continue
@@ -76,7 +59,6 @@ def main(args):
             if df.loc[int(studynum)]["SUBSEGMENTAL"] == 1: 
                 print("*",studynum)
                 continue
-        """
 
         name2info[studynum] = [thicc, label, num_slices, phase, dataset]
         if slices: 
@@ -137,7 +119,6 @@ if __name__ == '__main__':
                         default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_12_4_clean',
                         help='Output directory for HDF5 file and pickle file.')
 
-    # TODO csv to filter subseg
     parser.add_argument('--csv_path', type=str)
 
     args_ = parser.parse_args()

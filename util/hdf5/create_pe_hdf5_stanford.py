@@ -19,7 +19,6 @@ def main(args):
 
     idx2acc = pickle.load(open("/data4/PE_stanford/idx_2_acc_stanford.pkl","rb"))
     
-    # TODO read in csv
     df = pd.read_csv(args.csv_path)
     df = df.set_index("acc")
 
@@ -102,8 +101,6 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str,
                         default='/deep/group/aihc-bootcamp-winter2018/medical-imaging/ct_chest_pe/tanay_data_12_4_clean',
                         help='Output directory for HDF5 file and pickle file.')
-
-    # TODO csv to filter subseg
     parser.add_argument('--csv_path', type=str)
 
     args_ = parser.parse_args()

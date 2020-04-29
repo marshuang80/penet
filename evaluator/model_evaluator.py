@@ -87,12 +87,12 @@ class ModelEvaluator(object):
         num_evaluated = num_visualized = 0
         start_visual = random.randint(0, max(1, num_examples - self.num_visuals))
         with tqdm(total=num_examples, unit=' ' + phase) as progress_bar:
-            for inputs, targets_dict, meta in data_loader:
+            for inputs, targets_dict in data_loader:
                 if num_evaluated >= num_examples:
                     break
 
                 with torch.no_grad():
-                    cls_logits = model.forward(inputs.to(device), meta.to(device))
+                    cls_logits = model.forward(inputs.to(device))
                     cls_targets = targets_dict['is_abnormal']
                     loss = self.cls_loss_fn(cls_logits, cls_targets.to(device))
 

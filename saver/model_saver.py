@@ -98,7 +98,10 @@ class ModelSaver(object):
         ckpt_dict = torch.load(ckpt_path, map_location=device)
 
         # Build model, load parameters
-        model_fn = models.__dict__[ckpt_dict['model_name']]
+        try:
+            model_fn = models.__dict__[ckpt_dict['model_name']]
+        except:
+            model_fn = models.__dict__["PENetClassifier"]
         model_args = ckpt_dict['model_args']
         model = model_fn(**model_args)
         model = nn.DataParallel(model, gpu_ids)

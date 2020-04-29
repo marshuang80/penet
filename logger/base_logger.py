@@ -24,9 +24,7 @@ class BaseLogger(object):
         self.img_format = args.img_format
         self.save_dir = args.save_dir if args.is_training else args.results_dir
         self.do_classify = args.do_classify
-        self.do_segment = args.do_segment
         self.num_visuals = args.num_visuals
-        self.use_contrast = args.use_contrast
         self.log_path = os.path.join(self.save_dir, '{}.log'.format(args.name))
         log_dir = os.path.join('logs', args.name + '_' + datetime.now().strftime('%b%d_%H%M'))
         self.summary_writer = SummaryWriter(log_dir=log_dir)
@@ -116,14 +114,8 @@ class BaseLogger(object):
             output_np = None
 
             label = 'abnormal' if targets_dict['is_abnormal'][i] else 'normal'
-            if self.do_segment:
-                concat_fn = util.stack_videos if is_3d else util.concat_images
-                visuals = [input_np, output_np] if mask_np is None else [input_np, mask_np, output_np]
-                title = 'input_pred' if mask_np is None else 'input_mask_pred'
-                visuals_np = concat_fn(visuals)
-            else:
-                visuals_np = input_np
-                title = 'input'
+            visuals_np = input_np
+            title = 'input'
 
             tag = '{}/{}/{}_{}_{:.4f}'.format(phase, title, label, targets_dict['dset_path'][i], cls_probs[i][0])
             if unique_id is not None:

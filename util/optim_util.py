@@ -18,12 +18,11 @@ def get_loss_fn(is_classification, dataset, size_average=True):
     Returns:
         Differentiable criterion that can be applied to targets, logits.
     """
-    if is_classification:
-        return BinaryFocalLoss()
-    elif dataset == 'KineticsDataset':
+
+    if dataset == 'KineticsDataset':
         return nn.CrossEntropyLoss()
     else:
-        return HybridLoss(nn.BCEWithLogitsLoss, DiceLoss, alpha=0.05, beta=0.95, ignore_zero_labels=True)
+        return BinaryFocalLoss()
 
 
 def get_optimizer(parameters, args):

@@ -1,10 +1,10 @@
 import torch.nn as nn
 
 
-class XNetLateral(nn.Module):
-    """Lateral connection layer for XNet."""
+class PENetLateral(nn.Module):
+    """Lateral connection layer for PENet."""
     def __init__(self, in_channels, out_channels):
-        super(XNetLateral, self).__init__()
+        super(PENetLateral, self).__init__()
 
         self.conv = nn.Conv3d(in_channels, out_channels, kernel_size=1, bias=False)
         self.norm = nn.GroupNorm(out_channels // 16, out_channels)

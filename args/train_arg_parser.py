@@ -8,7 +8,6 @@ class TrainArgParser(BaseArgParser):
     def __init__(self):
         super(TrainArgParser, self).__init__()
         self.is_training = True
-        self.parser.add_argument('-f','--features', type=str, help='comma seperated features in [age, race, is_smoker, sex]', required=True)
         self.parser.add_argument('--epochs_per_save', type=int, default=5,
                                  help='Number of epochs between saving a checkpoint to save_dir.')
         self.parser.add_argument('--iters_per_print', type=int, default=4,
@@ -65,7 +64,7 @@ class TrainArgParser(BaseArgParser):
         self.parser.add_argument('--abnormal_prob', type=float, default=0.5,
                                  help='Probability of sampling an abnormal window during training.')
         self.parser.add_argument('--use_pretrained', type=util.str_to_bool, default=False,
-                                 help='If True, load a pretrained model from ckpt_path (XNet loading XNetClassifier).')
+                                 help='If True, load a pretrained model from ckpt_path (PENet loading PENetClassifier).')
         self.parser.add_argument('--include_normals', type=util.str_to_bool, default=False,
                                  help='Include normal series during training.')
         self.parser.add_argument('--use_hem', type=util.str_to_bool, default=False,

@@ -26,8 +26,6 @@ class TrainLogger(BaseLogger):
 
         if self.do_classify:
             loss_meters['cls_loss'] = util.AverageMeter()
-        if self.do_segment:
-            loss_meters['seg_loss'] = util.AverageMeter()
 
         return loss_meters
 

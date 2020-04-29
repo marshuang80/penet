@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class XNetASPPool(nn.Module):
+class PENetASPPool(nn.Module):
     """Atrous Spatial Pyramid Pooling layer.
 
     Based on the paper:
@@ -11,7 +11,7 @@ class XNetASPPool(nn.Module):
     (https://arxiv.org/abs/1706.05587).
     """
     def __init__(self, in_channels, out_channels):
-        super(XNetASPPool, self).__init__()
+        super(PENetASPPool, self).__init__()
 
         self.mid_channels = out_channels // 4
         self.in_conv = nn.Sequential(nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=2, dilation=2),

@@ -12,14 +12,9 @@ import util
 class BaseArgParser(object):
     """Base argument parser for args shared between test and train modes."""
     def __init__(self):
-        self.parser = argparse.ArgumentParser(description='Head and Spine CT')
-        self.parser.add_argument('--model', type=str, choices=('LRCN', 'R2Plus1D', 'ResNet', 'UNet',
-                                                               'VNet', 'XNet', 'XNetClassifier'), default='XNet',
-                                 help='Model to use. LRCN, R2Plus1D, ResNet, UNet, VNet, or XNet.')
-        self.parser.add_argument('--lrcn_cnn', type=str, choices=('resnet152', 'resnet18', 'resnet34', 'resnet50',
-                                                                  'resnet101', 'densenet121', 'densenet169',
-                                                                  'densenet161', 'densenet201'),
-                                 default='resnet50', help='CNN to use in the LRCN model.')
+        self.parser = argparse.ArgumentParser(description='PENet base args')
+        self.parser.add_argument('--model', type=str, choices=('PENet', 'PENetClassifier'), default='PENet',
+                                 help='Model to use. PENetClassifier or PENet.')
         self.parser.add_argument('--batch_size', type=int, default=6, help='Batch size.')
         self.parser.add_argument('--ckpt_path', type=str, default='',
                                  help='Path to checkpoint to load. If empty, start from scratch.')
@@ -52,8 +47,6 @@ class BaseArgParser(object):
                                  help='Method for aggregating window-level predictions to a single prediction.')
         self.parser.add_argument('--save_dir', type=str, default='../ckpts/',
                                  help='Directory in which to save model checkpoints.')
-        self.parser.add_argument('--use_contrast', type=util.str_to_bool, default=True,
-                                 help='Use contrast studies (CT head datasets only).')
         self.parser.add_argument('--threshold_size', default=0, type=float,
                                  help='Only the aneurysms bigger than the threshold size (mm) will be labeled as 1.')
         self.parser.add_argument('--toy', type=util.str_to_bool, default=False, help='Use small dataset or not.')
@@ -64,8 +57,8 @@ class BaseArgParser(object):
         self.parser.add_argument('--vstep_size', type=int, default=1, 
                                  help='Number of slices to move forward at a time')
         self.parser.add_argument('--dataset', type=str, required=True,
-                                 choices=('head', 'head_brain', 'spine', 'kinetics', 'pe'),
-                                 help='Dataset to use. Gets mapped to CTHeadDataset3d or CTSpineDataset3d.')
+                                 choices=('kinetics', 'pe'),
+                                 help='Dataset to use.')
         self.parser.add_argument('--deterministic', type=util.str_to_bool, default=False,
                                  help='If true, set a random seed to get deterministic results.')
         self.parser.add_argument('--cudnn_benchmark', type=util.str_to_bool, default=False,
@@ -77,14 +70,10 @@ class BaseArgParser(object):
                                  help='Level of hiding squares in hide-and-seek.')
         self.parser.add_argument('--only_topmost_window', type=util.str_to_bool, default=False,
                                  help='If true, only use the topmost window in each series.')
-        self.parser.add_argument('--use_brain_range', type=util.str_to_bool, default=True,
-                                 help='If true, restrict to range containing brain.')
         self.parser.add_argument('--eval_mode', type=str, choices=('window', 'series'), default='series',
                                  help='Evaluation mode for reporting metrics.')
         self.parser.add_argument('--do_classify', type=util.str_to_bool, default=False,
                                  help='If True, perform classification.')
-        self.parser.add_argument('--do_segment', type=util.str_to_bool, default=True,
-                                 help='If True, perform segmentation.')
         self.parser.add_argument('--pe_types', type=eval, default='["central", "segmental"]',
                                  help='Types of PE to include.')
         self.is_training = None
@@ -114,8 +103,6 @@ class BaseArgParser(object):
                 args.lr_milestones = util.args_to_list(args.lr_milestones, allow_empty=False)
         if not args.pkl_path:
             args.pkl_path = os.path.join(args.data_dir, 'series_list.pkl')
-        if not args.do_classify and not args.do_segment:
-            raise ValueError('Must classify, segment, or do both.')
 
         # Set up resize and crop
         args.resize_shape = util.args_to_list(args.resize_shape, allow_empty=False, arg_type=int, allow_negative=False)
@@ -139,48 +126,25 @@ class BaseArgParser(object):
             cudnn.deterministic = True
 
         # Map dataset name to a class
-        args.is_brain_dset = args.dataset.endswith('brain')
-        if args.dataset.startswith('head'):
-            args.dataset = 'CTHeadDataset3d'
-        elif args.dataset == 'spine':
-            args.dataset = 'CTSpineDataset3d'
-        elif args.dataset == 'kinetics':
+        if args.dataset == 'kinetics':
             args.dataset = 'KineticsDataset'
         elif args.dataset == 'pe':
             args.dataset = 'CTPEDataset3d'
 
         if self.is_training and args.use_pretrained:
-            if args.model != 'XNet' and args.model != 'XNetClassifier':
-                raise ValueError('Pre-training only supported for XNet/XNetClassifier loading XNetClassifier.')
+            if args.model != 'PENet' and args.model != 'PENetClassifier':
+                raise ValueError('Pre-training only supported for PENet/PENetClassifier loading PENetClassifier.')
             if not args.ckpt_path:
                 raise ValueError('Must specify a checkpoint path for pre-trained model.')
 
         args.data_loader = 'CTDataLoader'
-        if args.model == 'LRCN':
-            args.loader = 'series'
-        elif args.model == 'R2Plus1D':
-            if args.model_depth not in (10, 16, 18, 26, 34):
-                raise ValueError('Invalid model depth for R(2+1)D: {}'.format(args.model_depth))
-            args.loader = 'window'
-        elif args.model == 'ResNet':
-            if args.model_depth not in (18, 50):
-                raise ValueError('Invalid model depth for ResNet: {}'.format(args.model_depth))
-            args.loader = 'window'
-        elif args.model == 'UNet':
-            if args.model_depth not in (4, 5, 6, 7, 8):
-                raise ValueError('Invalid model depth for UNet: {}'.format(args.model_depth))
-            args.loader = 'slice'
-        elif args.model == 'VNet':
-            if args.model_depth not in (4, 5, 6, 7, 8):
-                raise ValueError('Invalid model depth for VNet: {}'.format(args.model_depth))
-            args.loader = 'window'
-        elif args.model == 'XNet':
+        if args.model == 'PENet':
             if args.model_depth != 50:
-                raise ValueError('Invalid model depth for XNet: {}'.format(args.model_depth))
+                raise ValueError('Invalid model depth for PENet: {}'.format(args.model_depth))
             args.loader = 'window'
-        elif args.model == 'XNetClassifier':
+        elif args.model == 'PENetClassifier':
             if args.model_depth != 50:
-                raise ValueError('Invalid model depth for XNet: {}'.format(args.model_depth))
+                raise ValueError('Invalid model depth for PENet: {}'.format(args.model_depth))
             args.loader = 'window'
             if args.dataset == 'KineticsDataset':
                 args.data_loader = 'KineticsDataLoader'

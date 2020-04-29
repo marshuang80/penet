@@ -3,18 +3,18 @@ import torch
 import torch.nn as nn
 import util
 
-from models.layers.xnet import *
+from models.layers.penet import *
 
 
-class XNetClassifier(nn.Module):
-    """XNet stripped down for classification.
+class PENetClassifier(nn.Module):
+    """PENet stripped down for classification.
 
     The idea is to pre-train this network, then use the pre-trained
-    weights for the encoder in a full XNet.
+    weights for the encoder in a full PENet.
     """
 
     def __init__(self, model_depth, cardinality=32, num_channels=3, num_classes=600, init_method=None, **kwargs):
-        super(XNetClassifier, self).__init__()
+        super(PENetClassifier, self).__init__()
 
         self.in_channels = 64
         self.model_depth = model_depth
@@ -39,10 +39,10 @@ class XNetClassifier(nn.Module):
         for i, num_blocks in enumerate(encoder_config):
             out_channels = 2 ** i * 128
             stride = 1 if i == 0 else 2
-            encoder = XNetEncoder(self.in_channels, out_channels, num_blocks, self.cardinality,
+            encoder = PENetEncoder(self.in_channels, out_channels, num_blocks, self.cardinality,
                                   block_idx, total_blocks, stride=stride)
             self.encoders.append(encoder)
-            self.in_channels = out_channels * XNetBottleneck.expansion
+            self.in_channels = out_channels * PENetBottleneck.expansion
             block_idx += num_blocks
 
         self.classifier = GAPLinear(self.in_channels, num_classes)
@@ -94,7 +94,7 @@ class XNetClassifier(nn.Module):
 
     def args_dict(self):
         """Get a dictionary of args that can be used to reconstruct this architecture.
-        To use the returned dict, initialize the model with `XNet(**model_args)`.
+        To use the returned dict, initialize the model with `PENet(**model_args)`.
         """
         model_args = {
             'model_depth': self.model_depth,
@@ -106,9 +106,9 @@ class XNetClassifier(nn.Module):
         return model_args
 
     def load_pretrained(self, ckpt_path, gpu_ids):
-        """Load parameters from a pre-trained XNetClassifier from checkpoint at ckpt_path.
+        """Load parameters from a pre-trained PENetClassifier from checkpoint at ckpt_path.
         Args:
-            ckpt_path: Path to checkpoint for XNetClassifier.
+            ckpt_path: Path to checkpoint for PENetClassifier.
         Adapted from:
             https://discuss.pytorch.org/t/how-to-load-part-of-pre-trained-model/1113/2
         """

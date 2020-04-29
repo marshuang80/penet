@@ -100,7 +100,6 @@ class BaseCTDataset(Dataset):
         # TODO normalize to range 
         #pixels = np.interp(pixels, (pixels.min(), pixels.max()), (-3024, 3071))
 
-
         pixels = pixels.astype(np.float32)
 
 
