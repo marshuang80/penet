@@ -1,5 +1,5 @@
 # PENet 
-This repository contains the model (PENet) described in the paper *"PENet: A Scalable Deep-learning model for Automated Diagnosis of Pulmonary Embolism Using Volumetric CT Scan"* published on Nature Digital Medicine. [manuscript link](https://www-nature-com.stanford.idm.oclc.org/articles/s41746-020-0266-y) 
+This repository contains the model (PENet) described in the paper *"PENet: A Scalable Deep-learning model for Automated Diagnosis of Pulmonary Embolism Using Volumetric CT Scan"* published on Nature Digital Medicine. [manuscript link](https://rdcu.be/b3Lll) 
 
 ## Table of Contents
 0. [Introduction](#introduction)
@@ -17,7 +17,7 @@ To address this issue, we have developed an end-to-end deep learning model, PENe
 
 Our model also highlights regions in the original CT scans that contributed most to the model’s prediction using Class Activation Maps, which can potentially help draw Radiologists’ attention to the most relevant parts of the CT scans for more efficient and accurate diagnosis [See Example](https://www.youtube.com/watch?v=ZdOabYt4Cjo). 
 
-For more information please see the full manuscript at this [link](https://www-nature-com.stanford.idm.oclc.org/articles/s41746-020-0266-y).
+For more information please see the full manuscript at this [link](https://rdcu.be/b3Lll).
 
 ## Citation
 
