@@ -20,7 +20,7 @@ class MDAIModel:
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
-            gpu_ids = [0]  # Edit to add more GPUS
+            gpu_ids = list(range(torch.cuda.device_count()))
         else:
             self.device = torch.device("cpu")
             gpu_ids = []
