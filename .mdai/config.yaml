@@ -1,0 +1,2 @@
+base_image: py37
+device_type: gpu
