@@ -14,7 +14,7 @@ The model is series-scoped (an entire CT series is sent to the model server duri
 
 The model accepts optional arguments given below
 
-```json
+```jsonc
 {
     "probability_threshold": "0.5",  // threshold for creating output
     "gradcam": "0"                   // "0" (off) or "1" (generates gif over best sliding window)
