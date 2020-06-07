@@ -1,6 +1,8 @@
 # PENet 
 This repository contains the model (PENet) described in the paper *"PENet: A Scalable Deep-learning model for Automated Diagnosis of Pulmonary Embolism Using Volumetric CT Scan"* published on Nature Digital Medicine. [manuscript link](https://rdcu.be/b3Lll) 
 
+![](./img/cam.gif)
+
 ## Table of Contents
 0. [Introduction](#introduction)
 0. [Citation](#citation)
