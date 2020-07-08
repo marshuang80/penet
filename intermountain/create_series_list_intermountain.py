@@ -41,36 +41,6 @@ def convert(args):
         except RuntimeWarning:
             # Ignore warnings (e.g. no slices found in a dir).
             continue
-        """
-
-        if series.series_number == contrast_series:
-            if not args.include_unmasked and series.aneurysm_mask_path is None:
-                continue
-            mode = 'contrast'
-        elif args.include_non_contrast and series.series_number == non_contrast_series:
-            mode = 'non_contrast'
-        else:
-            # TODO: Only converting annotated contrast and non-contrast series for now.
-            continue
-
-        try:
-            series.annotate(args.is_aneurysm, mode, annotation, require_aneurysm_range=args.require_range)
-        except RuntimeWarning as w:
-            util.print_err('Not converting series at {}:'.format(base_path), w)
-            continue
-
-        # Extend an existing series' aneurysm bounds if this is a duplicate annotation
-        if args.is_aneurysm:
-            found_duplicate = False
-            for s in series_list:
-                if s.study_name == series.study_name and s.series_number == series.series_number:
-                    s.aneurysm_bounds = [min(s.aneurysm_bounds[0], series.aneurysm_bounds[0]),
-                                         max(s.aneurysm_bounds[1], series.aneurysm_bounds[1])]
-                    s.aneurysm_ranges.append(series.aneurysm_bounds)
-                found_duplicate = True
-            if found_duplicate:
-                continue
-        """
 
         series_list.append(series)
 
