@@ -27,39 +27,14 @@ def main(args):
         slice_lines = [l.strip() for l in slice_fh.readlines() if l.strip()]
     name2slices = {}
     name2info = {}
-    print(len(slice_lines))
     for slice_line in slice_lines:
         try:
             info, slices = slice_line.split(':')
         except:
-            print("exception")
-            print(slice_line)
             continue
         slices = slices.strip()
         info = info.split(',')
         studynum, thicc, label, num_slices, phase, dataset = int(info[0]), float(info[1]), int(info[2]), int(info[3]), info[4], info[5]
-        if phase != "test": 
-            #print(phase)
-            continue
-
-        if int(studynum) in acc:
-            if df.loc[int(studynum)]["subsegmental_only"] == 1: continue
-        if num_positive >= 83 and num_negative >= 84: break
-        if label == 1:
-            if num_positive >=83: continue
-            num_positive +=1
-        if label == 0:
-            if num_negative >=84: continue
-            print(studynum)
-            num_negative +=1
-
-        if np.isnan(df.loc[int(studynum)]["START"]): continue
-
-        if studynum in acc:
-            if df.loc[int(studynum)]["SUBSEGMENTAL"] == 1: 
-                print("*",studynum)
-                continue
-
         name2info[studynum] = [thicc, label, num_slices, phase, dataset]
         if slices: 
             name2slices[studynum] = [int(n) for n in slices.split(',')]
