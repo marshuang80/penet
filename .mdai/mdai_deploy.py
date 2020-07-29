@@ -10,7 +10,7 @@ from helper import compute_gradcam_gif, preprocess, get_best_window, get_windows
 
 DEFAULT_PROBABILITY_THRESHOLD = "0.5"
 DEFAULT_INPUT_SLICE_NUMBER = "24"
-GRADCAM_OFF = "0"
+GRADCAM = "0"
 
 
 class MDAIModel:
@@ -146,7 +146,7 @@ class MDAIModel:
                 "probability": float(probability),
             }
 
-            if input_args.get("gradcam", GRADCAM_OFF) == "1":
+            if input_args.get("gradcam", GRADCAM) == "1":
                 x_best, x_unnorm_best = get_best_window(
                     x_stacked, input_slice_number, best_window
                 )
