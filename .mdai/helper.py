@@ -67,6 +67,8 @@ def compute_gradcam_gif(cam, x, x_un_normalized):
         save_all=True,
         append_images=cam_frames[1:] if len(cam_frames) > 1 else [],
         format="GIF",
+        loop=0,
+        optimize=True,
     )
 
     return gradcam_output_buffer
