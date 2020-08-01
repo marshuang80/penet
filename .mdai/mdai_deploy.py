@@ -99,7 +99,11 @@ class MDAIModel:
         x_arrays = []
         for instance in input_instances:
             tags = instance["tags"]
-            ds = pydicom.dcmread(BytesIO(instance["file"]))
+            try:
+                ds = pydicom.dcmread(BytesIO(instance["file"]))
+                arr = ds.pixel_array
+            except:
+                continue
             x_orig = ds
             x_arrays.append(x_orig)
 
