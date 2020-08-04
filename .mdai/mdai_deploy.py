@@ -138,6 +138,8 @@ class MDAIModel:
                 "study_uid": tags["StudyInstanceUID"],
                 "series_uid": tags["SeriesInstanceUID"],
                 "frame_number": None,
+                "probability": float(probability),
+                "class_index": 0,
             }
         else:
             result = {
