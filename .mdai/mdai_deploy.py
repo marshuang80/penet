@@ -168,7 +168,6 @@ class MDAIModel:
                 gradcam_explanation = [
                     {
                         "name": "Grad-CAM",
-                        "description": "Visualize how parts of the image affects neural network’s output by looking into the activation maps. From _Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization_ (https://arxiv.org/abs/1610.02391)",
                         "content": gradcam_output_buffer.getvalue(),
                         "content_type": "image/gif",
                     }
