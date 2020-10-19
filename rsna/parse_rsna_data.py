@@ -5,11 +5,11 @@ import pandas as pd
 import pickle
 import numpy as np
 import h5py
-import util
 import pydicom
 import os
 import sys
 sys.path.append(os.getcwd())
+import util
 
 from ct import CTPE 
 from tqdm import tqdm
