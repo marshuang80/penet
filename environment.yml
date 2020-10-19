@@ -230,7 +230,6 @@ dependencies:
     - defusedxml==0.5.0
     - dicom==0.9.9.post1
     - enum34==1.1.6
-    - get==0.0.39
     - gpustat==0.4.1
     - html5lib==0.9999999
     - imageio==2.4.1
@@ -252,7 +251,6 @@ dependencies:
     - pexpect==4.8.0
     - pickleshare==0.7.5
     - pillow==7.1.2
-    - post==0.0.26
     - prometheus-client==0.4.2
     - prompt-toolkit==3.0.5
     - protobuf==3.11.3
