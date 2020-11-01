@@ -11,10 +11,6 @@ class CTPE(object):
         self.pe_idxs = [n - 1 for n in pe_slice_nums]
         self.phase = phase
         self.type = dataset
-        self.age = age
-        self.is_smoker = is_smoker
-        self.race = race
-        self.sex = gender
 
     def __len__(self):
         return self.num_slices

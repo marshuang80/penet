@@ -109,7 +109,7 @@ def main(args):
         #    npy_volume = npy_volume[::-1]
 
         # save parsed data
-        #hdf5_fh.create_dataset(str(series_uid), data=npy_volume, dtype=np.int16, chunks=True)
+        hdf5_fh.create_dataset(str(series_uid), data=npy_volume, dtype=np.int16, chunks=True)
 
         try:
             series = CTPE(
