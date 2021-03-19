@@ -1,6 +1,6 @@
 numpy==1.18.1
 opencv-python==4.2.0.32
-pillow==7.0.0
+pillow==8.1.1
 pydicom==1.4.1
 scipy==1.4.1
 torch==1.4.0
