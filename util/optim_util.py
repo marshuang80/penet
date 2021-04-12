@@ -71,6 +71,7 @@ def get_scheduler(optimizer, args):
                                warmup=args.lr_warmup_steps, max_iter=args.lr_decay_step)
         reg_lambda_fn = partial(linear_warmup_then_cosine, warmup=args.lr_warmup_steps, max_iter=args.lr_decay_step)
         lr_fns = [ft_lambda_fn, reg_lambda_fn] if args.use_pretrained else reg_lambda_fn
+
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_fns)
     else:
         raise ValueError('Invalid learning rate scheduler: {}.'.format(args.lr_scheduler))

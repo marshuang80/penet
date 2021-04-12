@@ -1,0 +1,41 @@
+python train_pretrained.py --abnormal_prob=0.30 \
+                --agg_method=max \
+                --batch_size=8 \
+                --best_ckpt_metric=val_AUROC \
+                --crop_shape=192,192 \
+                --cudnn_benchmark=False \
+                --ckpt_path="/data/PE_stanford/ckpts/resnet-50-kinetics.pth" \
+                --data_dir=/data/PE_stanford/Stanford_data/ \
+                --dataset=pe \
+                --do_classify=True \
+                --epochs_per_eval=1 \
+                --epochs_per_save=1 \
+                --fine_tune=False \
+                --fine_tuning_boundary=classifier \
+                --fine_tuning_lr=1e-2 \
+                --gpu_ids=0,1 \
+                --include_normals=True \
+                --iters_per_print=8 \
+                --iters_per_visual=800000 \
+                --learning_rate=1e-1 \
+                --lr_decay_step=600000 \
+                --lr_scheduler=cosine_warmup \
+                --lr_warmup_steps=10000 \
+                --num_classes=1 \
+                --num_epochs=50 \
+                --num_slices=64 \
+                --num_visuals=8 \
+                --num_workers=12 \
+                --optimizer=sgd \
+                --pe_types='["central","segmental"]' \
+                --resize_shape=208,208 \
+                --save_dir=/data/ckpt/ \
+                --sgd_dampening=0.9 \
+                --sgd_momentum=0.9 \
+                --use_hem=False \
+                --weight_decay=1e-3 \
+                --name=test_pretrained_resnet50
+
+
+                #--use_pretrained=True \
+
