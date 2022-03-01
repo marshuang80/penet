@@ -56,11 +56,24 @@ Our results demonstrate robust and interpretable diagnosis including sustained c
 3. Create the environment: `conda env create -f environment.yml`.
 4. Activate the environment: `source activate ctpe`.
 
-#### Downlaod trained weights
+#### Download trained weights
 
 The checkpoints and weights for PENet are stored [here](https://stanfordmedicine.box.com/s/uql0ikebseltkkntiwl5rrn6zzuww6jt). 
 
 #### Training
+
+##### Download the data
+Go to [Stanford Medicine Box](https://stanfordmedicine.app.box.com/s/q6lm1iwauyspyuicq4rlz35bqsnrwle0) and unzip all data `.npy` into the same directory.
+
+Move `series_list.pkl` to the same directory as the data.
+
+##### Preprocessing the data
+Change the input and output path of `/scripts/create_pe_hdf5_update.py` and run the script to generate dataset in hdf5 format for loading efficiency. This will create a `data.hdf5` file and put it under the same directory as the data.
+
+##### Download pretrained weights of Kinetics-600
+The checkpoints and weights for PENet pretrained on Kinetics-600 are stored [provide a link]().
+
+##### Training
 
 To re-train the model, please modify **dir_dir**, **ckpt_path** and **save_dir** in `train.sh` and run `sh train.sh`
 

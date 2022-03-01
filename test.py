@@ -38,7 +38,7 @@ def test(args):
     util.print_err('Writing model outputs to {}...'.format(args.results_dir))
     with tqdm(total=len(data_loader.dataset), unit=' windows') as progress_bar:
         for i, (inputs, targets_dict) in enumerate(data_loader):
-            means.append(inputs.mean().data[0])
+            means.append(inputs.mean().item())
             with torch.no_grad():
                 cls_logits = model.forward(inputs.to(args.device))
                 cls_probs = F.sigmoid(cls_logits)

@@ -124,10 +124,10 @@ class ModelEvaluator(object):
             assert keys is not None, 'Must keep probs and keys lists in parallel'
             with torch.no_grad():
                 batch_probs = F.sigmoid(logits)
-            probs.append(batch_probs)
+            probs.append(batch_probs.detach().cpu())
 
             # Note: `targets` is assumed to hold the keys for these examples
-            keys.append(targets)
+            keys.append(targets.detach().cpu())
 
         if loss_meter is not None:
             loss_meter.update(loss.item(), logits.size(0))
