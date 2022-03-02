@@ -115,7 +115,17 @@ class PENetClassifier(nn.Module):
         device = 'cuda:{}'.format(gpu_ids[0]) if len(gpu_ids) > 0 else 'cpu'
         pretrained_dict = torch.load(ckpt_path, map_location=device)['model_state']
         model_dict = self.state_dict()
-
+        
+        ############ Rename the parameters' name in the pretrained checkpoint #########
+        new_pretrained_dict = {}
+        for k,v in pretrained_dict.items():
+            old_key = k
+            new_key = old_key.replace("xnet_blocks", "penet_blocks")
+            new_pretrained_dict[old_key] = new_key
+        
+        for old, new in new_pretrained_dict.items():
+            pretrained_dict[new] = pretrained_dict.pop(old)
+        ###############################################################################
         # Filter out unnecessary keys
         pretrained_dict = {k[len('module.'):]: v for k, v in pretrained_dict.items()}
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
