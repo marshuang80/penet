@@ -71,7 +71,7 @@ Move `series_list.pkl` to the same directory as the data.
 Change the input and output path of `/scripts/create_pe_hdf5_update.py` and run the script to generate dataset in hdf5 format for loading efficiency. This will create a `data.hdf5` file and put it under the same directory as the data.
 
 ##### Download pretrained weights of Kinetics-600
-The checkpoints and weights for PENet pretrained on Kinetics-600 are stored [provide a link]().
+The checkpoints and weights for PENet pretrained on Kinetics-600 are stored [Stanford Medicine Box](https://stanfordmedicine.box.com/s/gfwy1431vkf2heekipmogwd737741lvz).
 
 ##### Training
 
