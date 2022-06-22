@@ -1,4 +1,4 @@
-numpy==1.18.1
+numpy==1.22.0
 opencv-python==4.2.0.32
 pillow==7.0.0
 pydicom==1.4.1
