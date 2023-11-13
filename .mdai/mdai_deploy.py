@@ -6,12 +6,11 @@ import numpy as np
 from custom_gradcam import CustomGradCAM
 from saver import ModelSaver
 import util
-from helper import preprocess, compute_gradcam_gif
+from helper import compute_gradcam_gif, preprocess, get_best_window, get_windows
 
 DEFAULT_PROBABILITY_THRESHOLD = "0.5"
 DEFAULT_INPUT_SLICE_NUMBER = "24"
-GRADCAM_OFF = "0"
-GRADCAM_MAX_PROBABILITY = "1"
+GRADCAM = "0"
 
 
 class MDAIModel:
@@ -100,7 +99,11 @@ class MDAIModel:
         x_arrays = []
         for instance in input_instances:
             tags = instance["tags"]
-            ds = pydicom.dcmread(BytesIO(instance["file"]))
+            try:
+                ds = pydicom.dcmread(BytesIO(instance["file"]))
+                arr = ds.pixel_array
+            except:
+                continue
             x_orig = ds
             x_arrays.append(x_orig)
 
@@ -111,13 +114,14 @@ class MDAIModel:
         if len(x_arrays) < input_slice_number:
             input_slice_number = len(x_arrays)
 
-        x, x_un_normalized = preprocess(x_arrays, input_slice_number)
+        x_stacked = preprocess(x_arrays)
         self.model.eval()
 
         best_window = 0
         probability = 0.0
+        i = 0
         with torch.no_grad():
-            for i, window in enumerate(x):
+            for window in get_windows(x_stacked, input_slice_number):
                 cls_logits = self.model.forward(
                     window.to(self.device, dtype=torch.float)
                 )
@@ -125,7 +129,7 @@ class MDAIModel:
                 if cls_probs[0][0] > probability:
                     probability = cls_probs[0][0]
                     best_window = i
-
+                i += 1
         if not probability >= float(
             input_args.get("probability_threshold", DEFAULT_PROBABILITY_THRESHOLD)
         ):
@@ -133,8 +137,8 @@ class MDAIModel:
                 "type": "NONE",
                 "study_uid": tags["StudyInstanceUID"],
                 "series_uid": tags["SeriesInstanceUID"],
-                "instance_uid": tags["SOPInstanceUID"],
                 "frame_number": None,
+                "probability": float(probability),
             }
         else:
             result = {
@@ -147,23 +151,23 @@ class MDAIModel:
                 "probability": float(probability),
             }
 
-            if input_args.get("gradcam", GRADCAM_OFF) == GRADCAM_MAX_PROBABILITY:
+            if input_args.get("gradcam", GRADCAM) == "1":
+                x_best, x_unnorm_best = get_best_window(
+                    x_stacked, input_slice_number, best_window
+                )
                 self.grad_cam.register_hooks()
 
                 with torch.set_grad_enabled(True):
-                    probs, idx = self.grad_cam.forward(x[best_window])
+                    probs, idx = self.grad_cam.forward(x_best)
                     self.grad_cam.backward(idx=idx[0])
                     cam = self.grad_cam.get_cam("module.encoders.3")
 
                 self.grad_cam.remove_hooks()
 
-                gradcam_output_buffer = compute_gradcam_gif(
-                    cam, x[best_window], x_un_normalized[best_window]
-                )
+                gradcam_output_buffer = compute_gradcam_gif(cam, x_best, x_unnorm_best)
                 gradcam_explanation = [
                     {
                         "name": "Grad-CAM",
-                        "description": "Visualize how parts of the image affects neural network’s output by looking into the activation maps. From _Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization_ (https://arxiv.org/abs/1610.02391)",
                         "content": gradcam_output_buffer.getvalue(),
                         "content_type": "image/gif",
                     }
